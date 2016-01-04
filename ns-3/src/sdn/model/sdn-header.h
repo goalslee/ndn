@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /*
- * Copyright (c) 2007 INESC Porto
+ * Copyright (c) 2016 Haoliang Chen
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -15,11 +15,11 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Author: Gustavo J. A. M. Carneiro  <gjc@inescporto.pt>
+ * Author: Haoliang Chen  <chl41993@gmail.com>
  */
 
-#ifndef OLSR_HEADER_H
-#define OLSR_HEADER_H
+#ifndef SDN_HEADER_H
+#define SDN_HEADER_H
 
 #include <stdint.h>
 #include <vector>
@@ -27,16 +27,15 @@
 #include "ns3/ipv4-address.h"
 #include "ns3/nstime.h"
 
-
 namespace ns3 {
 namespace olsr {
 
 double EmfToSeconds (uint8_t emf);
 uint8_t SecondsToEmf (double seconds);
 
-// 3.3.  Packet Format
+// Packet Format
 //
-//    The basic layout of any packet in OLSR is as follows (omitting IP and
+//    The basic layout of any packet in SDN is as follows (omitting IP and
 //    UDP headers):
 //
 //        0                   1                   2                   3
@@ -46,9 +45,7 @@ uint8_t SecondsToEmf (double seconds);
 //       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 //       |  Message Type |     Vtime     |         Message Size          |
 //       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-//       |                      Originator Address                       |
-//       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-//       |  Time To Live |   Hop Count   |    Message Sequence Number    |
+//       |          Time To Live         |    Message Sequence Number    |
 //       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 //       |                                                               |
 //       :                            MESSAGE                            :
@@ -56,9 +53,7 @@ uint8_t SecondsToEmf (double seconds);
 //       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 //       |  Message Type |     Vtime     |         Message Size          |
 //       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-//       |                      Originator Address                       |
-//       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-//       |  Time To Live |   Hop Count   |    Message Sequence Number    |
+//       |          Time To Live         |    Message Sequence Number    |
 //       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 //       |                                                               |
 //       :                            MESSAGE                            :
@@ -109,19 +104,20 @@ public:
 //       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 //       |  Message Type |     Vtime     |         Message Size          |
 //       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-//       |                      Originator Address                       |
+//       |          Time To Live         |    Message Sequence Number    |
 //       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-//       |  Time To Live |   Hop Count   |    Message Sequence Number    |
+//       |                                                               |
+//       :                            MESSAGE                            :
+//       |                                                               |
 //       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
 class MessageHeader : public Header
 {
 public:
 
   enum MessageType {
-    HELLO_MESSAGE = 1,
-    TC_MESSAGE    = 2,
-    MID_MESSAGE   = 3,
-    HNA_MESSAGE   = 4,
+    HELLO_MESSAGE    = 1,
+    ROUTING_MESSAGE  = 2,
   };
 
   MessageHeader ();
@@ -145,31 +141,13 @@ public:
     return Seconds (EmfToSeconds (m_vTime));
   }
 
-  void SetOriginatorAddress (Ipv4Address originatorAddress)
-  {
-    m_originatorAddress = originatorAddress;
-  }
-  Ipv4Address GetOriginatorAddress () const
-  {
-    return m_originatorAddress;
-  }
-
-  void SetTimeToLive (uint8_t timeToLive)
+  void SetTimeToLive (uint16_t timeToLive)
   {
     m_timeToLive = timeToLive;
   }
-  uint8_t GetTimeToLive () const
+  uint16_t GetTimeToLive () const
   {
     return m_timeToLive;
-  }
-
-  void SetHopCount (uint8_t hopCount)
-  {
-    m_hopCount = hopCount;
-  }
-  uint8_t GetHopCount () const
-  {
-    return m_hopCount;
   }
 
   void SetMessageSequenceNumber (uint16_t messageSequenceNumber)
@@ -181,21 +159,19 @@ public:
     return m_messageSequenceNumber;
   }
 
-//   void SetMessageSize (uint16_t messageSize)
-//   {
-//     m_messageSize = messageSize;
-//   }
-//   uint16_t GetMessageSize () const
-//   {
-//     return m_messageSize;
-//   }
+   void SetMessageSize (uint16_t messageSize)
+   {
+     m_messageSize = messageSize;
+   }
+   uint16_t GetMessageSize () const
+   {
+     return m_messageSize;
+   }
 
 private:
   MessageType m_messageType;
   uint8_t m_vTime;
-  Ipv4Address m_originatorAddress;
-  uint8_t m_timeToLive;
-  uint8_t m_hopCount;
+  uint16_t m_timeToLive;
   uint16_t m_messageSequenceNumber;
   uint16_t m_messageSize;
 
@@ -206,30 +182,8 @@ public:
   virtual uint32_t GetSerializedSize (void) const;
   virtual void Serialize (Buffer::Iterator start) const;
   virtual uint32_t Deserialize (Buffer::Iterator start);
-
-  // 5.1.  MID Message Format
-  //
-  //    The proposed format of a MID message is as follows:
-  //
-  //        0                   1                   2                   3
-  //        0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-  //       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  //       |                    OLSR Interface Address                     |
-  //       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  //       |                    OLSR Interface Address                     |
-  //       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  //       |                              ...                              |
-  //       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  struct Mid
-  {
-    std::vector<Ipv4Address> interfaceAddresses;
-    void Print (std::ostream &os) const;
-    uint32_t GetSerializedSize (void) const;
-    void Serialize (Buffer::Iterator start) const;
-    uint32_t Deserialize (Buffer::Iterator start, uint32_t messageSize);
-  };
-
-  // 6.1.  HELLO Message Format
+//Todo
+  // HELLO Message Format
   //
   //        0                   1                   2                   3
   //        0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -431,41 +385,13 @@ public:
     return m_message.hna;
   }
 
-
 };
 
 
-static inline std::ostream& operator<< (std::ostream& os, const PacketHeader & packet)
-{
-  packet.Print (os);
-  return os;
-}
-
-static inline std::ostream& operator<< (std::ostream& os, const MessageHeader & message)
-{
-  message.Print (os);
-  return os;
-}
-
-typedef std::vector<MessageHeader> MessageList;
-
-static inline std::ostream& operator<< (std::ostream& os, const MessageList & messages)
-{
-  os << "[";
-  for (std::vector<MessageHeader>::const_iterator messageIter = messages.begin ();
-       messageIter != messages.end (); messageIter++)
-    {
-      messageIter->Print (os);
-      if (messageIter+1 != messages.end ())
-        os << ", ";
-    }
-  os << "]";
-  return os;
-}
 
 
-}
-}  // namespace olsr, ns3
+}//namespace sdn
+}//namespace ns3
 
-#endif /* OLSR_HEADER_H */
 
+#endif /* SDN_HEADER_H */
