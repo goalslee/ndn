@@ -33,6 +33,9 @@ namespace olsr {
 double EmfToSeconds (uint8_t emf);
 uint8_t SecondsToEmf (double seconds);
 
+float     IEEE754 (uint32_t emf);
+uint32_t  IEEE754 (float dec);
+
 // Packet Format
 //
 //    The basic layout of any packet in SDN is as follows (omitting IP and
@@ -182,59 +185,78 @@ public:
   virtual uint32_t GetSerializedSize (void) const;
   virtual void Serialize (Buffer::Iterator start) const;
   virtual uint32_t Deserialize (Buffer::Iterator start);
-//Todo
+
   // HELLO Message Format
   //
   //        0                   1                   2                   3
   //        0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
   //
   //       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  //       |          Reserved             |     Htime     |  Willingness  |
+  //       |                        ID (IP Address)                        |
   //       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  //       |   Link Code   |   Reserved    |       Link Message Size       |
+  //       |                           Position X                          |
   //       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  //       |                  Neighbor Interface Address                   |
+  //       |                           Position Y                          |
   //       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  //       |                  Neighbor Interface Address                   |
+  //       |                           Position Z                          |
   //       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  //       :                             .  .  .                           :
-  //       :                                                               :
+  //       |                           Velocity X                          |
   //       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  //       |   Link Code   |   Reserved    |       Link Message Size       |
+  //       |                           Velocity Y                          |
   //       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  //       |                  Neighbor Interface Address                   |
-  //       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  //       |                  Neighbor Interface Address                   |
+  //       |                           Velocity Z                          |
   //       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
   //       :                                                               :
   //       :                                       :
   //    (etc.)
   struct Hello
   {
-    struct LinkMessage {
-      uint8_t linkCode;
-      std::vector<Ipv4Address> neighborInterfaceAddresses;
+    Ipv4Address ID;
+    
+    struct Position{
+      uint32_t X, Y, Z;
     };
-
-    uint8_t hTime;
-    void SetHTime (Time time)
+    
+    struct Velocity{
+      uint32_t X, Y, Z;
+    };
+    
+    Position m_position;
+    void SetPosition(double x, double y, double z)
     {
-      this->hTime = SecondsToEmf (time.GetSeconds ());
+      m_position.X = IEEE754(x);
+      m_position.Y = IEEE754(y);
+      m_position.Z = IEEE754(z);
     }
-    Time GetHTime () const
+    
+    void GetPosition(double &x, double &y, double &z)
     {
-      return Seconds (EmfToSeconds (this->hTime));
+      x = IEEE754(m_position.X);
+      y = IEEE754(m_position.Y);
+      z = IEEE754(m_position.Z);
     }
-
-    uint8_t willingness;
-    std::vector<LinkMessage> linkMessages;
-
+    
+    Velocity m_velocity;
+    void SetVelocity(double x, double y, double z)
+    {
+      m_velocity.X = IEEE754(x);
+      m_velocity.Y = IEEE754(y);
+      m_velocity.Z = IEEE754(z);
+    }
+    
+    void GetVelocity(double &x, double &y, double &z)
+    {
+      x = IEEE754(m_velocity.X);
+      y = IEEE754(m_velocity.Y);
+      z = IEEE754(m_velocity.Z);
+    }
+    
     void Print (std::ostream &os) const;
     uint32_t GetSerializedSize (void) const;
     void Serialize (Buffer::Iterator start) const;
     uint32_t Deserialize (Buffer::Iterator start, uint32_t messageSize);
   };
-
+//TODO
   // 9.1.  TC Message Format
   //
   //    The proposed format of a TC message is as follows:
