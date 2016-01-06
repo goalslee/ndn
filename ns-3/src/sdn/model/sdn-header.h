@@ -186,7 +186,7 @@ public:
   virtual void Serialize (Buffer::Iterator start) const;
   virtual uint32_t Deserialize (Buffer::Iterator start);
 
-  // HELLO Message Format
+  //  HELLO Message Format
   //
   //        0                   1                   2                   3
   //        0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -221,34 +221,34 @@ public:
       uint32_t X, Y, Z;
     };
     
-    Position m_position;
+    Position position;
     void SetPosition(double x, double y, double z)
     {
-      m_position.X = IEEE754(x);
-      m_position.Y = IEEE754(y);
-      m_position.Z = IEEE754(z);
+      this->position.X = IEEE754(x);
+      this->position.Y = IEEE754(y);
+      this->position.Z = IEEE754(z);
     }
     
-    void GetPosition(double &x, double &y, double &z)
+    void GetPosition(double &x, double &y, double &z) const
     {
-      x = IEEE754(m_position.X);
-      y = IEEE754(m_position.Y);
-      z = IEEE754(m_position.Z);
+      x = IEEE754(this->position.X);
+      y = IEEE754(this->position.Y);
+      z = IEEE754(this->position.Z);
     }
     
-    Velocity m_velocity;
+    Velocity velocity;
     void SetVelocity(double x, double y, double z)
     {
-      m_velocity.X = IEEE754(x);
-      m_velocity.Y = IEEE754(y);
-      m_velocity.Z = IEEE754(z);
+      this->velocity.X = IEEE754(x);
+      this->velocity.Y = IEEE754(y);
+      this->velocity.Z = IEEE754(z);
     }
     
-    void GetVelocity(double &x, double &y, double &z)
+    void GetVelocity(double &x, double &y, double &z) const
     {
-      x = IEEE754(m_velocity.X);
-      y = IEEE754(m_velocity.Y);
-      z = IEEE754(m_velocity.Z);
+      x = IEEE754(this->velocity.X);
+      y = IEEE754(this->velocity.Y);
+      z = IEEE754(this->velocity.Z);
     }
     
     void Print (std::ostream &os) const;
@@ -257,91 +257,65 @@ public:
     uint32_t Deserialize (Buffer::Iterator start, uint32_t messageSize);
   };
 //TODO
-  // 9.1.  TC Message Format
+  //  Routing Message Format
   //
-  //    The proposed format of a TC message is as follows:
-  //
-  //        0                   1                   2                   3
-  //        0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-  //       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  //       |              ANSN             |           Reserved            |
-  //       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  //       |               Advertised Neighbor Main Address                |
-  //       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  //       |               Advertised Neighbor Main Address                |
-  //       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  //       |                              ...                              |
-  //       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-
-  struct Tc
-  {
-    std::vector<Ipv4Address> neighborAddresses;
-    uint16_t ansn;
-
-    void Print (std::ostream &os) const;
-    uint32_t GetSerializedSize (void) const;
-    void Serialize (Buffer::Iterator start) const;
-    uint32_t Deserialize (Buffer::Iterator start, uint32_t messageSize);
-  };
-
-
-  // 12.1.  HNA Message Format
-  //
-  //    The proposed format of an HNA-message is:
+  //    The proposed format of a routing message is as follows:
   //
   //        0                   1                   2                   3
   //        0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
   //       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  //       |                         Network Address                       |
+  //       |                     Routing Message Size                      |
   //       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  //       |                             Netmask                           |
+  //       |                          destAddress                          |
   //       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  //       |                         Network Address                       |
+  //       |                             Mask                              |
   //       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  //       |                             Netmask                           |
+  //       |                            nextHop                            |
   //       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  //       |                              ...                              |
+  //       |                          destAddress                          |
   //       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  //       |                             Mask                              |
+  //       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  //       |                            nextHop                            |
+  //       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  //       :                                                               :
+  //       :                               :
 
-  // Note: HNA stands for Host Network Association
-  struct Hna
+  struct Rm
   {
-    struct Association
+    struct Routing_Tuble{
+      Ipv4Address destAddress, mask, nextHop;
+    }
+    
+    uint32_t routingMessageSize;
+    void SetRoutingMessageSize(uint32_t rms)
     {
-      Ipv4Address address;
-      Ipv4Mask mask;
-    };
-    std::vector<Association> associations;
+      this->routingMessageSize = rms;
+    }
+    uint32_t GetRoutingMessageSize() const
+    {
+      return this->routingMessageSize;
+    }
+    
+    
+    std::vector<Routing_Tuble> routingTables;
+    
 
     void Print (std::ostream &os) const;
     uint32_t GetSerializedSize (void) const;
     void Serialize (Buffer::Iterator start) const;
     uint32_t Deserialize (Buffer::Iterator start, uint32_t messageSize);
   };
+
 
 private:
   struct
   {
-    Mid mid;
     Hello hello;
-    Tc tc;
-    Hna hna;
+    Rm rm;
   } m_message; // union not allowed
 
 public:
-
-  Mid& GetMid ()
-  {
-    if (m_messageType == 0)
-      {
-        m_messageType = MID_MESSAGE;
-      }
-    else
-      {
-        NS_ASSERT (m_messageType == MID_MESSAGE);
-      }
-    return m_message.mid;
-  }
 
   Hello& GetHello ()
   {
@@ -356,38 +330,19 @@ public:
     return m_message.hello;
   }
 
-  Tc& GetTc ()
+  Rm& GetRm ()
   {
     if (m_messageType == 0)
       {
-        m_messageType = TC_MESSAGE;
+        m_messageType = ROUTING_MESSAGE;
       }
     else
       {
-        NS_ASSERT (m_messageType == TC_MESSAGE);
+        NS_ASSERT (m_messageType == ROUTING_MESSAGE);
       }
-    return m_message.tc;
+    return m_message.rm;
   }
 
-  Hna& GetHna ()
-  {
-    if (m_messageType == 0)
-      {
-        m_messageType = HNA_MESSAGE;
-      }
-    else
-      {
-        NS_ASSERT (m_messageType == HNA_MESSAGE);
-      }
-    return m_message.hna;
-  }
-
-
-  const Mid& GetMid () const
-  {
-    NS_ASSERT (m_messageType == MID_MESSAGE);
-    return m_message.mid;
-  }
 
   const Hello& GetHello () const
   {
@@ -395,16 +350,10 @@ public:
     return m_message.hello;
   }
 
-  const Tc& GetTc () const
+  const Rm& GetRm () const
   {
-    NS_ASSERT (m_messageType == TC_MESSAGE);
-    return m_message.tc;
-  }
-
-  const Hna& GetHna () const
-  {
-    NS_ASSERT (m_messageType == HNA_MESSAGE);
-    return m_message.hna;
+    NS_ASSERT (m_messageType == ROUTING_MESSAGE);
+    return m_message.rm;
   }
 
 };
