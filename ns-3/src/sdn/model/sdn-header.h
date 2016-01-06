@@ -30,9 +30,6 @@
 namespace ns3 {
 namespace olsr {
 
-double EmfToSeconds (uint8_t emf);
-uint8_t SecondsToEmf (double seconds);
-
 float     IEEE754 (uint32_t emf);
 uint32_t  IEEE754 (float dec);
 
