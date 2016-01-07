@@ -253,7 +253,7 @@ public:
     void Serialize (Buffer::Iterator start) const;
     uint32_t Deserialize (Buffer::Iterator start, uint32_t messageSize);
   };
-//TODO
+
   //  Routing Message Format
   //
   //    The proposed format of a routing message is as follows:
