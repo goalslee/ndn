@@ -181,7 +181,7 @@ private:
   Timer m_helloTimer;
   void HelloTimerExpire ();
 
-  Timer m_rmInterval;
+  Timer m_rmTimer;
   void RmTimerExpire ();
 
   /// A list of pending messages which are buffered awaiting for being sent.

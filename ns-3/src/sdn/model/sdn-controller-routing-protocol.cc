@@ -71,6 +71,9 @@
 #define JITTER (Seconds (m_uniformRandomVariable->GetValue (0, SDN_MAXJITTER)))
 
 
+#define SDN_MAX_SEQ_NUM        65535
+
+
 #define SDN_PORT_NUMBER 419
 /// Maximum number of messages per packet.
 #define SDN_MAX_MSGS    64
@@ -86,8 +89,59 @@ NS_LOG_COMPONENT_DEFINE ("SdnControllerRoutingProtocol");
 NS_OBJECT_ENSURE_REGISTERED (RoutingProtocol);
 
 
+RoutingProtocol::RoutingProtocol ()
+  : m_ipv4 (0),
+    m_helloTimer (Timer::CANCEL_ON_DESTROY),
+    m_rmTimer (Timer::CANCEL_ON_DESTROY),
+    m_queuedMessagesTimer (Timer::CANCEL_ON_DESTROY)
+{
+  m_uniformRandomVariable = CreateObject<UniformRandomVariable> ();
+}
 
-} // namespace olsr
+RoutingProtocol::~RoutingProtocol ()
+{
+  
+}
+
+void
+RoutingProtocol::SetIpv4 (Ptr<Ipv4> ipv4)
+{
+  NS_ASSERT (ipv4 != 0);
+  NS_ASSERT (m_ipv4 == 0);
+  NS_LOG_DEBUG ("Created sdn::RoutingProtocol");
+  m_helloTimer.SetFunction 
+    (&RoutingProtocol::HelloTimerExpire, this);
+  m_rmTimer.SetFunction 
+    (&RoutingProtocol::RmTimerExpire, this);
+  m_queuedMessagesTimer.SetFunction 
+    (&RoutingProtocol::SendQueuedMessages, this);
+
+  m_packetSequenceNumber = SDN_MAX_SEQ_NUM;
+  m_messageSequenceNumber = SDN_MAX_SEQ_NUM;
+
+
+  m_ipv4 = ipv4;
+}
+
+void RoutingProtocol::DoDispose ()
+{
+  m_ipv4 = 0;
+
+  for (std::map< Ptr<Socket>, Ipv4InterfaceAddress >::iterator iter = 
+       m_socketAddresses.begin ();
+       iter != m_socketAddresses.end (); iter++)
+    {
+      iter->first->Close ();
+    }
+  m_socketAddresses.clear ();
+  m_table.clear();
+
+  Ipv4RoutingProtocol::DoDispose ();
+}
+
+
+
+} // namespace sdn
 } // namespace ns3
 
 
