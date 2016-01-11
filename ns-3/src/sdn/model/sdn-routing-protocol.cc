@@ -20,7 +20,7 @@
 
 
 ///
-/// \brief Implementation of SDN agent on controller side 
+/// \brief Implementation of SDN agent on car side 
 /// and related classes.
 ///
 /// This is the main file of this software because SDN's behaviour is
@@ -81,7 +81,7 @@
 namespace ns3 {
 namespace sdn {
 
-NS_LOG_COMPONENT_DEFINE ("SdnControllerRoutingProtocol");
+NS_LOG_COMPONENT_DEFINE ("SdnRoutingProtocol");
 
 
 /********** SDN controller class **********/
@@ -92,7 +92,6 @@ NS_OBJECT_ENSURE_REGISTERED (RoutingProtocol);
 RoutingProtocol::RoutingProtocol ()
   : m_ipv4 (0),
     m_helloTimer (Timer::CANCEL_ON_DESTROY),
-    m_rmTimer (Timer::CANCEL_ON_DESTROY),
     m_queuedMessagesTimer (Timer::CANCEL_ON_DESTROY)
 {
   m_uniformRandomVariable = CreateObject<UniformRandomVariable> ();
@@ -111,8 +110,6 @@ RoutingProtocol::SetIpv4 (Ptr<Ipv4> ipv4)
   NS_LOG_DEBUG ("Created sdn::RoutingProtocol");
   m_helloTimer.SetFunction 
     (&RoutingProtocol::HelloTimerExpire, this);
-  m_rmTimer.SetFunction 
-    (&RoutingProtocol::RmTimerExpire, this);
   m_queuedMessagesTimer.SetFunction 
     (&RoutingProtocol::SendQueuedMessages, this);
 
@@ -139,6 +136,106 @@ void RoutingProtocol::DoDispose ()
   Ipv4RoutingProtocol::DoDispose ();
 }
 
+void
+RoutingProtocol::PrintRoutingTable (Ptr<OutputStreamWrapper> stream) const
+{
+  std::ostream* os = stream->GetStream ();
+  *os << "Destination\t\tMask\t\tNextHop\t\tInterface\tDistance\n";
+
+  for (std::map<Ipv4Address, RoutingTableEntry>::const_iterator iter = 
+       m_table.begin ();
+       iter != m_table.end (); iter++)
+    {
+      *os << iter->first << "\t\t";
+      *os << iter->second.mask << "\t\t";
+      *os << iter->second.nextAddr << "\t\t";
+      if (Names::FindName (m_ipv4->GetNetDevice (iter->second.interface)) != "")
+        {
+          *os << 
+          Names::FindName (m_ipv4->GetNetDevice (iter->second.interface)) << 
+          "\t\t";
+        }
+      else
+        {
+          *os << iter->second.interface << "\t\t";
+        }
+      *os << "\n";
+    }
+}
+
+void 
+RoutingProtocol::DoInitialize ()
+{
+  if (m_mainAddress == Ipv4Address ())
+    {
+      Ipv4Address loopback ("127.0.0.1");
+      for (uint32_t i = 0; i < m_ipv4->GetNInterfaces (); i++)
+        {
+          // Use primary address as ID, if multiple
+          Ipv4Address addr = m_ipv4->GetAddress (i, 0).GetLocal ();
+          if (addr != loopback)
+            {
+              m_mainAddress = addr;
+              break;
+            }
+        }
+
+      NS_ASSERT (m_mainAddress != Ipv4Address ());
+    }
+
+  NS_LOG_DEBUG ("Starting SDN on node (Car) " << m_mainAddress);
+
+  Ipv4Address loopback ("127.0.0.1");
+
+  bool canRunSdn = false;
+  for (uint32_t i = 0; i < m_ipv4->GetNInterfaces (); i++)
+    {
+      Ipv4Address addr = m_ipv4->GetAddress (i, 0).GetLocal ();
+      if (addr == loopback)
+        continue;
+
+      //Dont Know  
+      if (addr != m_mainAddress)
+        {
+          // Create never expiring interface association tuple entries for our
+          // own network interfaces, so that GetMainAddress () works to
+          // translate the node's own interface addresses into the main address.
+          IfaceAssocTuple tuple;
+          tuple.ifaceAddr = addr;
+          tuple.mainAddr = m_mainAddress;
+          AddIfaceAssocTuple (tuple);
+          NS_ASSERT (GetMainAddress (addr) == m_mainAddress);
+        }
+      
+      // Obvious
+      if(m_interfaceExclusions.find (i) != m_interfaceExclusions.end ())
+        continue;
+
+      // Create a socket to listen only on this interface
+      Ptr<Socket> socket = Socket::CreateSocket (GetObject<Node> (), 
+                                                 UdpSocketFactory::GetTypeId ());
+      // FALSE
+      socket->SetAllowBroadcast (false);
+      InetSocketAddress inetAddr (m_ipv4->GetAddress (i, 0).GetLocal (), SDN_PORT_NUMBER);
+      socket->SetRecvCallback (MakeCallback (&RoutingProtocol::RecvSDN,  this));
+      if (socket->Bind (inetAddr))
+        {
+          NS_FATAL_ERROR ("Failed to bind() OLSR socket");
+        }
+      socket->BindToNetDevice (m_ipv4->GetNetDevice (i));
+      m_socketAddresses[socket] = m_ipv4->GetAddress (i, 0);
+
+      canRunSdn = true;
+    }
+
+  if(canRunSdn)
+    {
+      HelloTimerExpire ();
+      TcTimerExpire ();
+
+      NS_LOG_DEBUG ("SDN on node (Car) " << m_mainAddress << " started");
+    }
+}
 
 
 } // namespace sdn
