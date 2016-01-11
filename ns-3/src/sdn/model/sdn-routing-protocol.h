@@ -59,7 +59,7 @@ struct RoutingTableEntry
 
 class RoutingProtocol;
 
-/// \brief SDN routing protocol for IPv4
+/// \brief SDN routing protocol (Car side) for IPv4
 ///
 class RoutingProtocol : public Ipv4RoutingProtocol
 {
@@ -174,15 +174,11 @@ private:
 
   void RecvSDN (Ptr<Socket> socket);
 
-  void RoutingTableComputation ();
   Ipv4Address GetMainAddress (Ipv4Address iface_addr) const;
 
   // Timer handlers
   Timer m_helloTimer;
   void HelloTimerExpire ();
-
-  Timer m_rmTimer;
-  void RmTimerExpire ();
 
   /// A list of pending messages which are buffered awaiting for being sent.
   sdn::MessageList m_queuedMessages;
@@ -191,11 +187,7 @@ private:
   void QueueMessage (const sdn::MessageHeader &message, Time delay);
   void SendQueuedMessages ();
   void SendHello ();
-  void SendRm ();
 
-  void ProcessHello (const sdn::MessageHeader &msg,
-                     const Ipv4Address &receiverIface,
-                     const Ipv4Address &senderIface);
   void ProcessRm (const sdn::MessageHeader &msg,
                   const Ipv4Address &senderIface);
 
