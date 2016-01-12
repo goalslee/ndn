@@ -188,8 +188,7 @@ private:
   void SendQueuedMessages ();
   void SendHello ();
 
-  void ProcessRm (const sdn::MessageHeader &msg,
-                  const Ipv4Address &senderIface);
+  void ProcessRm (const sdn::MessageHeader &msg);
 
   /// Check that address is one of my interfaces
   bool IsMyOwnAddress (const Ipv4Address & a) const;
