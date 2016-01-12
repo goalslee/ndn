@@ -31,7 +31,7 @@
   if (GetObject<Node> ()) { std::clog << "[node " << GetObject<Node> ()->GetId () << "] "; }
 
 
-#include "sdn-controller-routing-protocol.h"
+#include "sdn-routing-protocol.h"
 #include "ns3/socket-factory.h"
 #include "ns3/udp-socket-factory.h"
 #include "ns3/simulator.h"
@@ -195,6 +195,7 @@ RoutingProtocol::DoInitialize ()
         continue;
 
       //Dont Know  
+      /*
       if (addr != m_mainAddress)
         {
           // Create never expiring interface association tuple entries for our
@@ -206,6 +207,7 @@ RoutingProtocol::DoInitialize ()
           AddIfaceAssocTuple (tuple);
           NS_ASSERT (GetMainAddress (addr) == m_mainAddress);
         }
+      */
       
       // Obvious
       if(m_interfaceExclusions.find (i) != m_interfaceExclusions.end ())
@@ -216,7 +218,8 @@ RoutingProtocol::DoInitialize ()
                                                  UdpSocketFactory::GetTypeId ());
       // FALSE
       socket->SetAllowBroadcast (false);
-      InetSocketAddress inetAddr (m_ipv4->GetAddress (i, 0).GetLocal (), SDN_PORT_NUMBER);
+      InetSocketAddress 
+        inetAddr (m_ipv4->GetAddress (i, 0).GetLocal (), SDN_PORT_NUMBER);
       socket->SetRecvCallback (MakeCallback (&RoutingProtocol::RecvSDN,  this));
       if (socket->Bind (inetAddr))
         {
@@ -231,11 +234,181 @@ RoutingProtocol::DoInitialize ()
   if(canRunSdn)
     {
       HelloTimerExpire ();
-      TcTimerExpire ();
+      RmTimerExpire ();
 
       NS_LOG_DEBUG ("SDN on node (Car) " << m_mainAddress << " started");
     }
 }
+
+void 
+RoutingProtocol::SetMainInterface (uint32_t interface)
+{
+  m_mainAddress = m_ipv4->GetAddress (interface, 0).GetLocal ();
+}
+
+void 
+RoutingProtocol::SetInterfaceExclusions (std::set<uint32_t> exceptions)
+{
+  m_interfaceExclusions = exceptions;
+}
+
+//
+// \brief Processes an incoming %SDN packet (Car Side).
+void
+RoutingProtocol::RecvSDN (Ptr<Socket> socket)
+{
+  Ptr<Packet> receivedPacket;
+  Address sourceAddress;
+  receivedPacket = socket->RecvFrom (sourceAddress);
+
+  InetSocketAddress inetSourceAddr = InetSocketAddress::ConvertFrom (sourceAddress);
+  Ipv4Address senderIfaceAddr = inetSourceAddr.GetIpv4 ();
+  Ipv4Address receiverIfaceAddr = m_socketAddresses[socket].GetLocal ();
+  NS_ASSERT (receiverIfaceAddr != Ipv4Address ());
+  NS_LOG_DEBUG ("SDN node (Car) " << m_mainAddress 
+                << " received a SDN packet from "
+                << senderIfaceAddr << " to " << receiverIfaceAddr);
+
+  // All routing messages are sent from and to port RT_PORT,
+  // so we check it.
+  NS_ASSERT (inetSourceAddr.GetPort () == SDN_PORT_NUMBER);
+
+  Ptr<Packet> packet = receivedPacket;
+
+  sdn::PacketHeader sdnPacketHeader;
+  packet->RemoveHeader (sdnPacketHeader);
+  NS_ASSERT (sdnPacketHeader.GetPacketLength () >= sdnPacketHeader.GetSerializedSize ());
+  uint32_t sizeLeft = sdnPacketHeader.GetPacketLength () - sdnPacketHeader.GetSerializedSize ();
+
+  MessageList messages;
+
+  while (sizeLeft)
+    {
+      MessageHeader messageHeader;
+      if (packet->RemoveHeader (messageHeader) == 0)
+        NS_ASSERT (false);
+
+      sizeLeft -= messageHeader.GetSerializedSize ();
+
+      NS_LOG_DEBUG ("SDN Msg received with type "
+                    << std::dec << int (messageHeader.GetMessageType ())
+                    << " TTL=" << int (messageHeader.GetTimeToLive ())
+                    << " SeqNum=" << messageHeader.GetMessageSequenceNumber ());
+      messages.push_back (messageHeader);
+    }
+
+  m_rxPacketTrace (sdnPacketHeader, messages);
+////Lunch Time
+  for (MessageList::const_iterator messageIter = messages.begin ();
+       messageIter != messages.end (); messageIter++)
+    {
+      const MessageHeader &messageHeader = *messageIter;
+      // If ttl is less than or equal to zero, or
+      // the receiver is the same as the originator,
+      // the message must be silently dropped
+      if (messageHeader.GetTimeToLive () == 0
+          || messageHeader.GetOriginatorAddress () == m_mainAddress)
+        {
+          packet->RemoveAtStart (messageHeader.GetSerializedSize ()
+                                 - messageHeader.GetSerializedSize ());
+          continue;
+        }
+
+      // If the message has been processed it must not be processed again
+      bool do_forwarding = true;
+      DuplicateTuple *duplicated = m_state.FindDuplicateTuple
+          (messageHeader.GetOriginatorAddress (),
+          messageHeader.GetMessageSequenceNumber ());
+
+      // Get main address of the peer, which may be different from the packet source address
+//       const IfaceAssocTuple *ifaceAssoc = m_state.FindIfaceAssocTuple (inetSourceAddr.GetIpv4 ());
+//       Ipv4Address peerMainAddress;
+//       if (ifaceAssoc != NULL)
+//         {
+//           peerMainAddress = ifaceAssoc->mainAddr;
+//         }
+//       else
+//         {
+//           peerMainAddress = inetSourceAddr.GetIpv4 () ;
+//         }
+
+      if (duplicated == NULL)
+        {
+          switch (messageHeader.GetMessageType ())
+            {
+            case olsr::MessageHeader::HELLO_MESSAGE:
+              NS_LOG_DEBUG (Simulator::Now ().GetSeconds ()
+                            << "s OLSR node " << m_mainAddress
+                            << " received HELLO message of size " << messageHeader.GetSerializedSize ());
+              ProcessHello (messageHeader, receiverIfaceAddr, senderIfaceAddr);
+              break;
+
+            case olsr::MessageHeader::TC_MESSAGE:
+              NS_LOG_DEBUG (Simulator::Now ().GetSeconds ()
+                            << "s OLSR node " << m_mainAddress
+                            << " received TC message of size " << messageHeader.GetSerializedSize ());
+              ProcessTc (messageHeader, senderIfaceAddr);
+              break;
+
+            case olsr::MessageHeader::MID_MESSAGE:
+              NS_LOG_DEBUG (Simulator::Now ().GetSeconds ()
+                            << "s OLSR node " << m_mainAddress
+                            <<  " received MID message of size " << messageHeader.GetSerializedSize ());
+              ProcessMid (messageHeader, senderIfaceAddr);
+              break;
+            case olsr::MessageHeader::HNA_MESSAGE:
+              NS_LOG_DEBUG (Simulator::Now ().GetSeconds ()
+                            << "s OLSR node " << m_mainAddress
+                            <<  " received HNA message of size " << messageHeader.GetSerializedSize ());
+              ProcessHna (messageHeader, senderIfaceAddr);
+              break; 
+
+            default:
+              NS_LOG_DEBUG ("OLSR message type " <<
+                            int (messageHeader.GetMessageType ()) <<
+                            " not implemented");
+            }
+        }
+      else
+        {
+          NS_LOG_DEBUG ("OLSR message is duplicated, not reading it.");
+
+          // If the message has been considered for forwarding, it should
+          // not be retransmitted again
+          for (std::vector<Ipv4Address>::const_iterator it = duplicated->ifaceList.begin ();
+               it != duplicated->ifaceList.end (); it++)
+            {
+              if (*it == receiverIfaceAddr)
+                {
+                  do_forwarding = false;
+                  break;
+                }
+            }
+        }
+
+      if (do_forwarding)
+        {
+          // HELLO messages are never forwarded.
+          // TC and MID messages are forwarded using the default algorithm.
+          // Remaining messages are also forwarded using the default algorithm.
+          if (messageHeader.GetMessageType ()  != olsr::MessageHeader::HELLO_MESSAGE)
+            {
+              ForwardDefault (messageHeader, duplicated,
+                              receiverIfaceAddr, inetSourceAddr.GetIpv4 ());
+            }
+        }
+    }
+
+  // After processing all OLSR messages, we must recompute the routing table
+  RoutingTableComputation ();
+}// End of RecvSDN
+
+
+
+
+
+
+
 
 
 } // namespace sdn
