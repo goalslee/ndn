@@ -171,7 +171,7 @@ RoutingProtocol::DoInitialize ()
       Ipv4Address loopback ("127.0.0.1");
       for (uint32_t i = 0; i < m_ipv4->GetNInterfaces (); i++)
         {
-          // Use primary address as ID, if multiple
+          // Use first address as ID, if multiple
           Ipv4Address addr = m_ipv4->GetAddress (i, 0).GetLocal ();
           if (addr != loopback)
             {
@@ -319,7 +319,8 @@ RoutingProtocol::RecvSDN (Ptr<Socket> socket)
         case sdn::MessageHeader::RM_MESSAGE:
           NS_LOG_DEBUG (Simulator::Now ().GetSeconds ()
                         << "s SDN node " << m_mainAddress
-                        << " received Routing message of size " << messageHeader.GetSerializedSize ());
+                        << " received Routing message of size " 
+                        << messageHeader.GetSerializedSize ());
           ProcessRm (messageHeader);
           break;
 
@@ -333,8 +334,17 @@ RoutingProtocol::RecvSDN (Ptr<Socket> socket)
     
 }// End of RecvSDN
 
-
-
+void
+RoutingProtocol::ProcessRm (const sdn::MessageHeader &msg)
+{
+  NS_LOG_FUNCTION (msg);
+  
+  const sdn::MessageHeader::Rm &rm = msg.GetRm();
+  ///TODO
+  
+  
+  
+}
 
 
 
