@@ -30,7 +30,7 @@
 #define SDN_PKT_HEADER_SIZE 4
 #define SDN_HELLO_HEADER_SIZE 28
 #define SDN_RM_HEADER_SIZE 4
-#define SDN_RM_TUBLE_SIZE 3
+#define SDN_RM_TUPLE_SIZE 3
 
 NS_LOG_COMPONENT_DEFINE ("SdnHeader");
 
@@ -277,7 +277,7 @@ uint32_t
 MessageHeader::Rm::GetSerializedSize (void) const
 {
   return SDN_RM_HEADER_SIZE + 
-    this->routingTables.size () * IPV4_ADDRESS_SIZE * SDN_RM_TUBLE_SIZE;
+    this->routingTables.size () * IPV4_ADDRESS_SIZE * SDN_RM_TUPLE_SIZE;
 }
 
 void 
@@ -293,7 +293,7 @@ MessageHeader::Rm::Serialize (Buffer::Iterator start) const
 
   i.WriteHtonU32 (this->routingMessageSize);
 
-  for (std::vector<Routing_Tuble>::const_iterator iter = 
+  for (std::vector<Routing_Tuple>::const_iterator iter = 
     this->routingTables.begin (); 
     iter != this->routingTables.end (); 
     iter++)
@@ -316,20 +316,20 @@ MessageHeader::Rm::Deserialize (Buffer::Iterator start,
   this->routingMessageSize = i.ReadNtohU32 ();
 
   NS_ASSERT ((messageSize - SDN_RM_HEADER_SIZE) % 
-    (IPV4_ADDRESS_SIZE * SDN_RM_TUBLE_SIZE) == 0);
+    (IPV4_ADDRESS_SIZE * SDN_RM_TUPLE_SIZE) == 0);
     
-  int numTubles = (messageSize - SDN_RM_HEADER_SIZE) 
-    / (IPV4_ADDRESS_SIZE * SDN_RM_TUBLE_SIZE);
-  for (int n = 0; n < numTubles; ++n)
+  int numTuples = (messageSize - SDN_RM_HEADER_SIZE) 
+    / (IPV4_ADDRESS_SIZE * SDN_RM_TUPLE_SIZE);
+  for (int n = 0; n < numTuples; ++n)
   {
-    Routing_Tuble temp_tuble;
-    temp_tuble.destAddress = 
+    Routing_Tuple temp_tuple;
+    temp_tuple.destAddress = 
       static_cast<Ipv4Address> i.ReadNtohU32();
-    temp_tuble.mask = 
+    temp_tuple.mask = 
       static_cast<Ipv4Address> i.ReadNtohU32();
-    temp_tuble.nextHop = 
+    temp_tuple.nextHop = 
       static_cast<Ipv4Address> i.ReadNtohU32();
-    this->routingTables.push_back (temp_tuble);
+    this->routingTables.push_back (temp_tuple);
    }
     
   return messageSize;

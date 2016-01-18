@@ -280,7 +280,7 @@ public:
 
   struct Rm
   {
-    struct Routing_Tuble{
+    struct Routing_Tuple{
       Ipv4Address destAddress, mask, nextHop;
     }
     
@@ -295,7 +295,7 @@ public:
     }
     
     
-    std::vector<Routing_Tuble> routingTables;
+    std::vector<Routing_Tuple> routingTables;
     
 
     void Print (std::ostream &os) const;
