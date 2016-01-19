@@ -141,8 +141,6 @@ private:
   bool Lookup (const Ipv4Address &dest,
                const Ipv4Address &mask,
                RoutingTableEntry &outEntry) const;
-  bool FindSendEntry (const RoutingTableEntry &entry,
-                      RoutingTableEntry &outEntry) const;
 
   // From Ipv4RoutingProtocol
   virtual Ptr<Ipv4Route> RouteOutput (Ptr<Packet> p,
