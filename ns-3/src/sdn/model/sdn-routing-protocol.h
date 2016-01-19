@@ -53,7 +53,7 @@ struct RoutingTableEntry
   uint32_t interface; ///< Interface index.
 
   RoutingTableEntry () : // default values
-                         destAddr (), nextAddr (),
+                         destAddr (), nextHop (),
                          mask(), interface (0) {};
 };
 
@@ -104,7 +104,7 @@ private:
 public:
   std::set<uint32_t> GetInterfaceExclusions () const
   {
-    return m_interfaceExclusions;
+    return (m_interfaceExclusions);
   }
   void SetInterfaceExclusions (std::set<uint32_t> exceptions);
 
@@ -128,7 +128,7 @@ private:
   Ptr<Ipv4> m_ipv4;
 
   void Clear ();
-  uint32_t GetSize () const { return m_table.size (); }
+  uint32_t GetSize () const { return (m_table.size ()); }
   void RemoveEntry (const Ipv4Address &dest);
   void AddEntry (const Ipv4Address &dest,
                  const Ipv4Address &mask,

@@ -148,7 +148,7 @@ RoutingProtocol::PrintRoutingTable (Ptr<OutputStreamWrapper> stream) const
     {
       *os << iter->first << "\t\t";
       *os << iter->second.mask << "\t\t";
-      *os << iter->second.nextAddr << "\t\t";
+      *os << iter->second.nextHop << "\t\t";
       if (Names::FindName (m_ipv4->GetNetDevice (iter->second.interface)) != "")
         {
           *os << 
@@ -234,7 +234,6 @@ RoutingProtocol::DoInitialize ()
   if(canRunSdn)
     {
       HelloTimerExpire ();
-      RmTimerExpire ();
 
       NS_LOG_DEBUG ("SDN on node (Car) " << m_mainAddress << " started");
     }
@@ -316,7 +315,7 @@ RoutingProtocol::RecvSDN (Ptr<Socket> socket)
 
       switch (messageHeader.GetMessageType ())
         {
-        case sdn::MessageHeader::RM_MESSAGE:
+        case sdn::MessageHeader::ROUTING_MESSAGE:
           NS_LOG_DEBUG (Simulator::Now ().GetSeconds ()
                         << "s SDN node " << m_mainAddress
                         << " received Routing message of size " 
@@ -334,6 +333,8 @@ RoutingProtocol::RecvSDN (Ptr<Socket> socket)
     
 }// End of RecvSDN
 
+
+// \brief Build routing table according to Rm
 void
 RoutingProtocol::ProcessRm (const sdn::MessageHeader &msg)
 {
@@ -344,23 +345,80 @@ RoutingProtocol::ProcessRm (const sdn::MessageHeader &msg)
   NS_LOG_DEBUG ("@" << now.GetSeconds() << ":Node " << m_mainAddress
                 << "ProcessRm.");
   
-  NS_ASSERT (msg.GetRoutingMessageSize() >= 0);
+  NS_ASSERT (rm.GetRoutingMessageSize() >= 0);
   
-  m_table.clear();
-  RoutingTableEntry RTE_temp;
+  Clear();
   
   for (std::vector<sdn::MessageHeader::Rm::  Routing_Tuple>::iterator it = rm.routingTables.begin();
         it != rm.routingTables.end();
         it++)
   {
-    RTE_temp.destAddr = it->
+
+    AddEntry(it->destAddress,
+	     it->mask,
+	     it->nextHop,
+	     0);
   }
-  
-  
+
 }
 
+void
+RoutingProtocol::Clear()
+{
+  NS_LOG_FUNCTION_NOARGS();
+  m_table.clear();
+}
 
+void
+RoutingProtocol::AddEntry (const Ipv4Address &dest,
+		           const Ipv4Address &mask,
+		           const Ipv4Address &next,
+			   uint32_t interface)
+{
+  NS_LOG_FUNCTION(this << dest << next << interface << mask << m_mainAddress);
+  RoutingTableEntry RTE;
+  RTE.destAddr = dest;
+  RTE.mask = mask;
+  RTE.nextHop = next;
+  RTE.interface = interface;
+  m_table[dest] = RTE;
+}
 
+void
+RoutingProtocol::AddEntry (const Ipv4Address &dest,
+		           const Ipv4Address &mask,
+		           const Ipv4Address &next,
+		           const Ipv4Address &interfaceAddress)
+{
+  NS_LOG_FUNCTION(this << dest << next << interfaceAddress << mask << m_mainAddress);
+
+  NS_ASSERT (m_ipv4);
+
+  for (uint32_t i = 0; i < m_ipv4->GetNInterfaces(); ++i)
+   for (uint32_t j = 0; j< m_ipv4->GetNAddresses(i); j++)
+     {
+       if (m_ipv4->GetAddress(i,j).GetLocal() == interfaceAddress)
+	 {
+	   AddEntry(dest, mask, next, i);
+	   return;
+	 }
+     }
+  NS_ASSERT(false);
+  AddEntry(dest, mask, next, 0);
+}
+
+bool
+RoutingProtocol::Lookup(Ipv4Address const &dest,
+			Ipv4Address const &mask,
+                        RoutingTableEntry &outEntry) const
+{
+  std::map<Ipv4Address, RoutingTableEntry>::const_iterator it =
+    m_table.find(dest);
+  if (it == m_table.end())
+    return (false);
+  outEntry = it->second;
+  return (true);
+}
 
 
 
