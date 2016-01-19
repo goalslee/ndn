@@ -28,9 +28,9 @@
 #include "ns3/nstime.h"
 
 namespace ns3 {
-namespace olsr {
+namespace sdn {
 
-float     IEEE754 (uint32_t emf);
+float     rIEEE754 (uint32_t emf);
 uint32_t  IEEE754 (float dec);
 
 // Packet Format
@@ -73,7 +73,7 @@ public:
   }
   uint16_t GetPacketLength () const
   {
-    return m_packetLength;
+    return (m_packetLength);
   }
 
   void SetPacketSequenceNumber (uint16_t seqnum)
@@ -82,7 +82,7 @@ public:
   }
   uint16_t GetPacketSequenceNumber () const
   {
-    return m_packetSequenceNumber;
+    return (m_packetSequenceNumber);
   }
 
 private:
@@ -129,16 +129,17 @@ public:
   }
   MessageType GetMessageType () const
   {
-    return m_messageType;
+    return (m_messageType);
   }
 
   void SetVTime (Time time)
   {
-    m_vTime = SecondsToEmf (time.GetSeconds ());
+    //vTime is useless by far
+    m_vTime = 0;
   }
   Time GetVTime () const
   {
-    return Seconds (EmfToSeconds (m_vTime));
+    return (0);
   }
 
   void SetTimeToLive (uint16_t timeToLive)
@@ -147,7 +148,7 @@ public:
   }
   uint16_t GetTimeToLive () const
   {
-    return m_timeToLive;
+    return (m_timeToLive);
   }
 
   void SetMessageSequenceNumber (uint16_t messageSequenceNumber)
@@ -156,7 +157,7 @@ public:
   }
   uint16_t GetMessageSequenceNumber () const
   {
-    return m_messageSequenceNumber;
+    return (m_messageSequenceNumber);
   }
 
    void SetMessageSize (uint16_t messageSize)
@@ -165,7 +166,7 @@ public:
    }
    uint16_t GetMessageSize () const
    {
-     return m_messageSize;
+     return (m_messageSize);
    }
 
 private:
@@ -228,9 +229,9 @@ public:
     
     void GetPosition(double &x, double &y, double &z) const
     {
-      x = IEEE754(this->position.X);
-      y = IEEE754(this->position.Y);
-      z = IEEE754(this->position.Z);
+      x = rIEEE754(this->position.X);
+      y = rIEEE754(this->position.Y);
+      z = rIEEE754(this->position.Z);
     }
     
     Velocity velocity;
@@ -243,9 +244,9 @@ public:
     
     void GetVelocity(double &x, double &y, double &z) const
     {
-      x = IEEE754(this->velocity.X);
-      y = IEEE754(this->velocity.Y);
-      z = IEEE754(this->velocity.Z);
+      x = rIEEE754(this->velocity.X);
+      y = rIEEE754(this->velocity.Y);
+      z = rIEEE754(this->velocity.Z);
     }
     
     void Print (std::ostream &os) const;
@@ -282,7 +283,7 @@ public:
   {
     struct Routing_Tuple{
       Ipv4Address destAddress, mask, nextHop;
-    }
+    };
     
     uint32_t routingMessageSize;
     void SetRoutingMessageSize(uint32_t rms)
@@ -291,7 +292,7 @@ public:
     }
     uint32_t GetRoutingMessageSize() const
     {
-      return this->routingMessageSize;
+      return (this->routingMessageSize);
     }
     
     
@@ -324,7 +325,7 @@ public:
       {
         NS_ASSERT (m_messageType == HELLO_MESSAGE);
       }
-    return m_message.hello;
+    return (m_message.hello);
   }
 
   Rm& GetRm ()
@@ -337,20 +338,20 @@ public:
       {
         NS_ASSERT (m_messageType == ROUTING_MESSAGE);
       }
-    return m_message.rm;
+    return (m_message.rm);
   }
 
 
   const Hello& GetHello () const
   {
     NS_ASSERT (m_messageType == HELLO_MESSAGE);
-    return m_message.hello;
+    return (m_message.hello);
   }
 
   const Rm& GetRm () const
   {
     NS_ASSERT (m_messageType == ROUTING_MESSAGE);
-    return m_message.rm;
+    return (m_message.rm);
   }
 
 };
@@ -358,13 +359,13 @@ public:
 static inline std::ostream& operator<< (std::ostream& os, const PacketHeader & packet)
 {
   packet.Print (os);
-  return os;
+  return (os);
 }
 
 static inline std::ostream& operator<< (std::ostream& os, const MessageHeader & message)
 {
   message.Print (os);
-  return os;
+  return (os);
 }
 
 typedef std::vector<MessageHeader> MessageList;
@@ -380,7 +381,7 @@ static inline std::ostream& operator<< (std::ostream& os, const MessageList & me
         os << ", ";
     }
   os << "]";
-  return os;
+  return (os);
 }
 
 

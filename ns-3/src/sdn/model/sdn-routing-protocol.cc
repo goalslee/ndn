@@ -340,8 +340,21 @@ RoutingProtocol::ProcessRm (const sdn::MessageHeader &msg)
   NS_LOG_FUNCTION (msg);
   
   const sdn::MessageHeader::Rm &rm = msg.GetRm();
-  ///TODO
+  Time now = Simulator::Now();
+  NS_LOG_DEBUG ("@" << now.GetSeconds() << ":Node " << m_mainAddress
+                << "ProcessRm.");
   
+  NS_ASSERT (msg.GetRoutingMessageSize() >= 0);
+  
+  m_table.clear();
+  RoutingTableEntry RTE_temp;
+  
+  for (std::vector<sdn::MessageHeader::Rm::  Routing_Tuple>::iterator it = rm.routingTables.begin();
+        it != rm.routingTables.end();
+        it++)
+  {
+    RTE_temp.destAddr = it->
+  }
   
   
 }
