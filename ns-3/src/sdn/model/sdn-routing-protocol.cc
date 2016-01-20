@@ -355,9 +355,9 @@ RoutingProtocol::ProcessRm (const sdn::MessageHeader &msg)
   {
 
     AddEntry(it->destAddress,
-	     it->mask,
-	     it->nextHop,
-	     0);
+             it->mask,
+             it->nextHop,
+             0);
   }
 
 }
@@ -371,9 +371,9 @@ RoutingProtocol::Clear()
 
 void
 RoutingProtocol::AddEntry (const Ipv4Address &dest,
-		           const Ipv4Address &mask,
-		           const Ipv4Address &next,
-			   uint32_t interface)
+                           const Ipv4Address &mask,
+                           const Ipv4Address &next,
+                           uint32_t interface)
 {
   NS_LOG_FUNCTION(this << dest << next << interface << mask << m_mainAddress);
   RoutingTableEntry RTE;
@@ -386,9 +386,9 @@ RoutingProtocol::AddEntry (const Ipv4Address &dest,
 
 void
 RoutingProtocol::AddEntry (const Ipv4Address &dest,
-		           const Ipv4Address &mask,
-		           const Ipv4Address &next,
-		           const Ipv4Address &interfaceAddress)
+                           const Ipv4Address &mask,
+                           const Ipv4Address &next,
+                           const Ipv4Address &interfaceAddress)
 {
   NS_LOG_FUNCTION(this << dest << next << interfaceAddress << mask << m_mainAddress);
 
@@ -398,10 +398,10 @@ RoutingProtocol::AddEntry (const Ipv4Address &dest,
    for (uint32_t j = 0; j< m_ipv4->GetNAddresses(i); j++)
      {
        if (m_ipv4->GetAddress(i,j).GetLocal() == interfaceAddress)
-	 {
-	   AddEntry(dest, mask, next, i);
-	   return;
-	 }
+         {
+           AddEntry(dest, mask, next, i);
+           return;
+         }
      }
   NS_ASSERT(false);
   AddEntry(dest, mask, next, 0);
@@ -409,7 +409,7 @@ RoutingProtocol::AddEntry (const Ipv4Address &dest,
 
 bool
 RoutingProtocol::Lookup(Ipv4Address const &dest,
-			Ipv4Address const &mask,
+                        Ipv4Address const &mask,
                         RoutingTableEntry &outEntry) const
 {
   std::map<Ipv4Address, RoutingTableEntry>::const_iterator it =
@@ -420,7 +420,85 @@ RoutingProtocol::Lookup(Ipv4Address const &dest,
   return (true);
 }
 
+bool
+RoutingProtocol::RouteInput(Ptr<const Packet> p,
+                            const Ipv4Header &header,
+                            Ptr<const NetDevice> idev,
+                            UnicastForwardCallback ucb,
+                            MulticastForwardCallback mcb,
+                            LocalDeliverCallback lcb,
+                            ErrorCallback ecb)
+{
+  NS_LOG_FUNCTION (this << " " << m_ipv4->GetObject<Node> ()->GetId () << " " << header.GetDestination ());
 
+  Ipv4Address dest = header.GetDestination();
+  Ipv4Address sour = header.GetSource();
+
+  // Consume self-originated packets
+  if (IsMyOwnAddress (sour) == true)
+    {
+      return true;
+    }
+
+  // Local delivery
+  NS_ASSERT (m_ipv4->GetInterfaceForDevice (idev) >= 0);
+  uint32_t iif = m_ipv4->GetInterfaceForDevice (idev);
+  if (m_ipv4->IsDestinationAddress (dest, iif))
+    {
+      if (!lcb.IsNull ())
+        {
+          NS_LOG_LOGIC ("Local delivery to " << dest);
+          lcb (p, header, iif);
+          return true;
+        }
+      else
+        {
+          // The local delivery callback is null.  This may be a multicast
+          // or broadcast packet, so return false so that another
+          // multicast routing protocol can handle it.  It should be possible
+          // to extend this to explicitly check whether it is a unicast
+          // packet, and invoke the error callback if so
+          return false;
+        }
+    }
+
+  // Forwarding
+  Ptr<Ipv4Route> rtentry;
+  RoutingTableEntry entry;
+  if (Lookup (header.GetDestination (), entry))
+    {
+      rtentry = Create<Ipv4Route> ();
+      rtentry->SetDestination (dest);
+      uint32_t interfaceIdx = entry.interface;
+      NS_ASSERT (m_ipv4);
+      uint32_t numOfifAddress = m_ipv4->GetNAddresses (interfaceIdx);
+      NS_ASSERT (numOfifAddress > 0);
+      Ipv4InterfaceAddress ifAddr;
+      if (numOfifAddress == 1) {
+          ifAddr = m_ipv4->GetAddress (interfaceIdx, 0);
+        }else{
+            // One Interface should only had one address.
+            NS_FATAL_ERROR ("Interface had more than one address");
+        }
+      rtentry->SetSource (ifAddr.GetLocal ());
+      rtentry->SetGateway (entry.nextHop);
+      rtentry->SetOutputDevice (m_ipv4->GetNetDevice (interfaceIdx));
+
+      NS_LOG_DEBUG ("SDN node " << m_mainAddress
+                                 << ": RouteInput for dest=" << header.GetDestination ()
+                                 << " --> nextHop=" << entry.nextHop
+                                 << " interface=" << entry.interface);
+
+      ucb (rtentry, p, header);
+      return true;
+    }
+  else
+    {
+      //Drop
+      return false;
+    }
+
+}
 
 
 } // namespace sdn

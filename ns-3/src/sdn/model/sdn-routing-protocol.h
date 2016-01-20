@@ -139,7 +139,6 @@ private:
                  const Ipv4Address &next,
                  const Ipv4Address &interfaceAddress);
   bool Lookup (const Ipv4Address &dest,
-               const Ipv4Address &mask,
                RoutingTableEntry &outEntry) const;
 
   // From Ipv4RoutingProtocol
