@@ -409,16 +409,52 @@ RoutingProtocol::AddEntry (const Ipv4Address &dest,
 
 bool
 RoutingProtocol::Lookup(Ipv4Address const &dest,
-                        Ipv4Address const &mask,
                         RoutingTableEntry &outEntry) const
 {
   std::map<Ipv4Address, RoutingTableEntry>::const_iterator it =
     m_table.find(dest);
-  if (it == m_table.end())
-    return (false);
-  outEntry = it->second;
-  return (true);
+  if (it != m_table.end())
+    {
+      outEntry = it->second;
+      return true;
+    }
+  else
+    {
+      Ipv4Mask MaskTemp;
+      uint16_t max_prefix;
+      bool max_prefix_meaningful = false;
+      for (it = m_table.begin();it!=m_table.end(); it++)
+        {
+          MaskTemp.Set (it->second.mask.Get ());
+          if (MaskTemp.IsMatch (dest, it->second.destAddr))
+            {
+              if (!max_prefix_meaningful)
+                {
+                  max_prefix_meaningful = true;
+                  max_prefix = MaskTemp.GetPrefixLength ();
+                  outEntry = it->second;
+                }
+              if (max_prefix_meaningful && (max_prefix < MaskTemp.GetPrefixLength ()))
+                {
+                  max_prefix = MaskTemp.GetPrefixLength ();
+                  outEntry = it->second;
+                }
+            }
+        }
+      if (max_prefix_meaningful)
+        return true;
+      else
+        return false;
+    }
+
 }
+
+void
+RoutingProtocol::RemoveEntry (Ipv4Address const &dest)
+{
+  m_table.erase (dest);
+}
+
 
 bool
 RoutingProtocol::RouteInput(Ptr<const Packet> p,
@@ -494,11 +530,24 @@ RoutingProtocol::RouteInput(Ptr<const Packet> p,
     }
   else
     {
-      //Drop
+      //Fail
       return false;
     }
 
 }
+
+void
+RoutingProtocol::NotifyInterfaceUp (uint32_t i)
+{}
+void
+RoutingProtocol::NotifyInterfaceDown (uint32_t i)
+{}
+void
+RoutingProtocol::NotifyAddAddress (uint32_t interface, Ipv4InterfaceAddress address)
+{}
+void
+RoutingProtocol::NotifyRemoveAddress (uint32_t interface, Ipv4InterfaceAddress address)
+{}
 
 
 } // namespace sdn
