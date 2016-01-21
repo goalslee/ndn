@@ -33,6 +33,7 @@
 #include "ns3/traced-callback.h"
 #include "ns3/ipv4.h"
 #include "ns3/ipv4-routing-protocol.h"
+#include "ns3/mobility-module.h"
 
 #include <vector>
 #include <map>
@@ -204,6 +205,13 @@ private:
 
   /// Provides uniform random variables.
   Ptr<UniformRandomVariable> m_uniformRandomVariable;  
+
+  // Mobility module for Vanet
+  Ptr<MobilityModel> m_mobility;
+
+public:
+  void SetMobility (Ptr<MobilityModel> mobility);
+
 
 };
 

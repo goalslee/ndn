@@ -781,6 +781,27 @@ RoutingProtocol::IsMyOwnAddress (const Ipv4Address & a) const
   return false;
 }
 
+void
+RoutingProtocol::SendHello ()
+{
+  NS_LOG_FUNCTION (this);
+  sdn::MessageHeader msg;
+  Time now = Simulator::Now ();
+  msg.SetVTime (m_helloInterval);//Useless now.
+  msg.SetTimeToLive (41993);//Just MY Birthday.
+  msg.SetMessageSequenceNumber (GetMessageSequenceNumber ());
+  msg.SetMessageType (sdn::MessageHeader::HELLO_MESSAGE);
+
+  sdn::MessageHeader::Hello &hello = msg.GetHello ();
+  hello.ID = m_mainAddress;
+  Vector pos = m_mobility->GetPosition ();
+  Vector vel = m_mobility->GetVelocity ();
+  hello.SetPosition (pos.x, pos.y, pos.z);
+  hello.SetVelocity (vel.x, vel.y, vel.z);
+
+
+}
+
 
 } // namespace sdn
 } // namespace ns3
