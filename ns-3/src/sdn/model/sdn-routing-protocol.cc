@@ -92,7 +92,9 @@ NS_OBJECT_ENSURE_REGISTERED (RoutingProtocol);
 RoutingProtocol::RoutingProtocol ()
   : m_ipv4 (0),
     m_helloTimer (Timer::CANCEL_ON_DESTROY),
-    m_queuedMessagesTimer (Timer::CANCEL_ON_DESTROY)
+    m_queuedMessagesTimer (Timer::CANCEL_ON_DESTROY),
+    m_packetSequenceNumber (SDN_MAX_SEQ_NUM),
+    m_messageSequenceNumber (SDN_MAX_SEQ_NUM)
 {
   m_uniformRandomVariable = CreateObject<UniformRandomVariable> ();
 }
@@ -548,6 +550,68 @@ RoutingProtocol::NotifyAddAddress (uint32_t interface, Ipv4InterfaceAddress addr
 void
 RoutingProtocol::NotifyRemoveAddress (uint32_t interface, Ipv4InterfaceAddress address)
 {}
+
+Ptr<Ipv4Route>
+RoutingProtocol::RouteOutput (Ptr<Packet> p,
+             const Ipv4Header &header,
+             Ptr<NetDevice> oif,
+             Socket::SocketErrno &sockerr)
+{
+  NS_LOG_FUNCTION (this << " " << m_ipv4->GetObject<Node> ()->GetId () << " " << header.GetDestination () << " " << oif);
+  Ptr<Ipv4Route> rtentry;
+  RoutingTableEntry entry;
+
+  if (Lookup (header.GetDestination (), entry))
+    {
+      uint32_t interfaceIdx = entry.interface;
+      if (oif && m_ipv4->GetInterfaceForDevice (oif) != static_cast<int> (interfaceIdx))
+        {
+          // We do not attempt to perform a constrained routing search
+          // if the caller specifies the oif; we just enforce that
+          // that the found route matches the requested outbound interface
+          NS_LOG_DEBUG ("SDN node " << m_mainAddress
+                                     << ": RouteOutput for dest=" << header.GetDestination ()
+                                     << " Route interface " << interfaceIdx
+                                     << " does not match requested output interface "
+                                     << m_ipv4->GetInterfaceForDevice (oif));
+          sockerr = Socket::ERROR_NOROUTETOHOST;
+          return rtentry;
+        }
+      rtentry = Create<Ipv4Route> ();
+      rtentry->SetDestination (header.GetDestination ());
+      // the source address is the interface address that matches
+      // the destination address (when multiple are present on the
+      // outgoing interface, one is selected via scoping rules)
+      NS_ASSERT (m_ipv4);
+      uint32_t numOifAddresses = m_ipv4->GetNAddresses (interfaceIdx);
+      NS_ASSERT (numOifAddresses > 0);
+      Ipv4InterfaceAddress ifAddr;
+      if (numOifAddresses == 1) {
+          ifAddr = m_ipv4->GetAddress (interfaceIdx, 0);
+        } else {
+          /// \todo Implment IP aliasing and OLSR
+          NS_FATAL_ERROR ("XXX Not implemented yet:  IP aliasing and OLSR");
+        }
+      rtentry->SetSource (ifAddr.GetLocal ());
+      rtentry->SetGateway (entry.nextHop);
+      rtentry->SetOutputDevice (m_ipv4->GetNetDevice (interfaceIdx));
+      sockerr = Socket::ERROR_NOTERROR;
+      NS_LOG_DEBUG ("SDN node " << m_mainAddress
+                                 << ": RouteOutput for dest=" << header.GetDestination ()
+                                 << " --> nextHop=" << entry.nextHop
+                                 << " interface=" << entry.interface);
+      NS_LOG_DEBUG ("Found route to " << rtentry->GetDestination () << " via nh " << rtentry->GetGateway () << " with source addr " << rtentry->GetSource () << " and output dev " << rtentry->GetOutputDevice ());
+    }
+  else
+    {
+      NS_LOG_DEBUG ("SDN node " << m_mainAddress
+                                 << ": RouteOutput for dest=" << header.GetDestination ()
+                                 << " No route to host");
+      sockerr = Socket::ERROR_NOROUTETOHOST;
+    }
+  return rtentry;
+}
+
 
 
 } // namespace sdn
