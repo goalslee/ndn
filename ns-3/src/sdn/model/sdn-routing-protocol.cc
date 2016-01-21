@@ -88,6 +88,13 @@ NS_LOG_COMPONENT_DEFINE ("SdnRoutingProtocol");
 
 NS_OBJECT_ENSURE_REGISTERED (RoutingProtocol);
 
+TypeId
+RoutingProtocol::GetTypeId ()
+{
+  static TypeId tid = TypeId ("ns3::sdn::RoutingProtocol");
+  return tid;
+}
+
 
 RoutingProtocol::RoutingProtocol ()
   : m_ipv4 (0),
@@ -612,6 +619,167 @@ RoutingProtocol::RouteOutput (Ptr<Packet> p,
   return rtentry;
 }
 
+void
+RoutingProtocol::Dump ()
+{
+#ifdef NS3_LOG_ENABLE
+  NS_LOG_DEBUG ("Dumpping For" << m_mainAddress);
+#endif //NS3_LOG_ENABLE
+}
+
+std::vector<RoutingTableEntry>
+RoutingProtocol::GetRoutingTableEntries () const
+{
+  std::vector<RoutingTableEntry> rtvt;
+  for (std::map<Ipv4Address, RoutingTableEntry>::const_iterator it = m_table.begin ();
+       it != m_table.end (); it++)
+    {
+      rtvt.push_back (it->second);
+    }
+  return rtvt;
+}
+
+int64_t
+RoutingProtocol::AssignStreams (int64_t stream)
+{
+  NS_LOG_FUNCTION (this << stream);
+  m_uniformRandomVariable->SetStream (stream);
+  return 1;
+}
+
+void
+RoutingProtocol::PrintRoutingTable (Ptr<OutputStreamWrapper> stream) const
+{
+  std::ostream* os = stream->GetStream ();
+  *os << "Destination\t\tMask\t\tNextHop\t\tInterface\n";
+
+  for (std::map<Ipv4Address, RoutingTableEntry>::const_iterator iter = m_table.begin ();
+       iter != m_table.end (); iter++)
+    {
+      *os << iter->first << "\t\t";
+      *os << iter->second.mask << "\t\t";
+      *os << iter->second.nextHop << "\t\t";
+      if (Names::FindName (m_ipv4->GetNetDevice (iter->second.interface)) != "")
+        {
+          *os << Names::FindName (m_ipv4->GetNetDevice (iter->second.interface));
+        }
+      else
+        {
+          *os << iter->second.interface;
+        }
+      *os << "\n";
+    }
+}
+
+uint16_t
+RoutingProtocol::GetPacketSequenceNumber ()
+{
+  m_packetSequenceNumber = (m_packetSequenceNumber + 1) % (SDN_MAX_SEQ_NUM + 1);
+  return m_packetSequenceNumber;
+}
+
+
+uint16_t
+RoutingProtocol::GetMessageSequenceNumber ()
+{
+  m_messageSequenceNumber = (m_messageSequenceNumber + 1) % (SDN_MAX_SEQ_NUM + 1);
+  return m_messageSequenceNumber;
+}
+
+void
+RoutingProtocol::HelloTimerExpire ()
+{
+  SendHello ();
+  m_helloTimer.Schedule (m_helloInterval);
+}
+
+void
+RoutingProtocol::SendPacket (Ptr<Packet> packet,
+                             const MessageList &containedMessages)
+{
+  NS_LOG_DEBUG ("SDN node " << m_mainAddress << " sending a SDN packet");
+
+  // Add a header
+  sdn::PacketHeader header;
+  header.SetPacketLength (header.GetSerializedSize () + packet->GetSize ());
+  header.SetPacketSequenceNumber (GetPacketSequenceNumber ());
+  packet->AddHeader (header);
+
+  // Trace it
+  m_txPacketTrace (header, containedMessages);
+
+  // Send it
+  for (std::map<Ptr<Socket>, Ipv4InterfaceAddress>::const_iterator i =
+         m_socketAddresses.begin (); i != m_socketAddresses.end (); i++)
+    {
+      Ipv4Address bcast = i->second.GetLocal ().GetSubnetDirectedBroadcast (i->second.GetMask ());
+      i->first->SendTo (packet, 0, InetSocketAddress (bcast, SDN_PORT_NUMBER));
+    }
+}
+
+void
+RoutingProtocol::QueueMessage (const sdn::MessageHeader &message, Time delay)
+{
+  m_queuedMessages.push_back (message);
+  if (not m_queuedMessagesTimer.IsRunning ())
+    {
+      m_queuedMessagesTimer.SetDelay (delay);
+      m_queuedMessagesTimer.Schedule ();
+    }
+}
+
+
+// NS3 is not multithread, so mutex is unnecessary.
+void
+RoutingProtocol::SendQueuedMessages ()
+{
+  Ptr<Packet> packet = Create<Packet> ();
+  int numMessages = 0;
+
+  NS_LOG_DEBUG ("SDN node " << m_mainAddress << ": SendQueuedMessages");
+
+  MessageList msglist;
+
+  for (std::vector<sdn::MessageHeader>::const_iterator message = m_queuedMessages.begin ();
+       message != m_queuedMessages.end ();
+       message++)
+    {
+      Ptr<Packet> p = Create<Packet> ();
+      p->AddHeader (*message);
+      packet->AddAtEnd (p);
+      msglist.push_back (*message);
+      if (++numMessages == SDN_MAX_MSGS)
+        {
+          SendPacket (packet, msglist);
+          msglist.clear ();
+          // Reset variables for next packet
+          numMessages = 0;
+          packet = Create<Packet> ();
+        }
+    }
+
+  if (packet->GetSize ())
+    {
+      SendPacket (packet, msglist);
+    }
+
+  m_queuedMessages.clear ();
+}
+
+bool
+RoutingProtocol::IsMyOwnAddress (const Ipv4Address & a) const
+{
+  for (std::map<Ptr<Socket>, Ipv4InterfaceAddress>::const_iterator j =
+         m_socketAddresses.begin (); j != m_socketAddresses.end (); ++j)
+    {
+      Ipv4InterfaceAddress iface = j->second;
+      if (a == iface.GetLocal ())
+        {
+          return true;
+        }
+    }
+  return false;
+}
 
 
 } // namespace sdn
