@@ -332,6 +332,14 @@ RoutingProtocol::RecvSDN (Ptr<Socket> socket)
           ProcessRm (messageHeader);
           break;
 
+        case sdn::MessageHeader::HELLO_MESSAGE:
+          NS_LOG_DEBUG (Simulator::Now ().GetSeconds ()
+                        << "s SDN node " << m_mainAddress
+                        << " received Routing message of size "
+                        << messageHeader.GetSerializedSize ());
+          //Car Node should discare Hello_Message
+          break;
+
         default:
           NS_LOG_DEBUG ("SDN message type " <<
                         int (messageHeader.GetMessageType ()) <<
@@ -799,7 +807,10 @@ RoutingProtocol::SendHello ()
   hello.SetPosition (pos.x, pos.y, pos.z);
   hello.SetVelocity (vel.x, vel.y, vel.z);
 
+  NS_LOG_DEBUG ( "SDN HELLO_MESSAGE sent by node: " << hello.ID
+                 << "   at " << now.GetSeconds() << "s");
 
+  QueueMessage (msg, JITTER);
 }
 
 
