@@ -813,6 +813,12 @@ RoutingProtocol::SendHello ()
   QueueMessage (msg, JITTER);
 }
 
+void
+RoutingProtocol::SetMobility (Ptr<MobilityModel> mobility)
+{
+  m_mobility = mobility;
+}
+
 
 } // namespace sdn
 } // namespace ns3

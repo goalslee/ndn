@@ -184,7 +184,7 @@ private:
 
   void QueueMessage (const sdn::MessageHeader &message, Time delay);//implemented
   void SendQueuedMessages ();//implemented
-  void SendHello ();
+  void SendHello ();//implemented
 
   void ProcessRm (const sdn::MessageHeader &msg);//implemented
 
