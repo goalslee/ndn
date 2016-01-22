@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /*
- * Copyright (c) 2008 INRIA
+ * Copyright (c) 2016 Haoliang Chen
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -15,55 +15,56 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Author: Mathieu Lacage <mathieu.lacage@sophia.inria.fr>
+ * Author: Haoliang Chen <chl41993@gmail.com>
  */
-#ifndef OLSR_HELPER_H
-#define OLSR_HELPER_H
+#ifndef SDN_HELPER_H
+#define SDN_HELPER_H
 
 #include "ns3/object-factory.h"
 #include "ns3/node.h"
 #include "ns3/node-container.h"
 #include "ns3/ipv4-routing-helper.h"
+#include "ns3/mobility-module.h"
 #include <map>
 #include <set>
 
 namespace ns3 {
 
 /**
- * \brief Helper class that adds OLSR routing to nodes.
+ * \brief Helper class that adds SDN routing to nodes.
  *
  * This class is expected to be used in conjunction with 
  * ns3::InternetStackHelper::SetRoutingHelper
  */
-class OlsrHelper : public Ipv4RoutingHelper
+class SdnHelper : public Ipv4RoutingHelper
 {
 public:
   /**
-   * Create an OlsrHelper that makes life easier for people who want to install
-   * OLSR routing to nodes.
+   * Create an SdnHelper that makes life easier for people who want to install
+   * SDN routing to nodes.
    */
-  OlsrHelper ();
+  SdnHelper ();
 
   /**
-   * \brief Construct an OlsrHelper from another previously initialized instance
+   * \brief Construct an SdnHelper from another previously initialized instance
    * (Copy Constructor).
    */
-  OlsrHelper (const OlsrHelper &);
+  SdnHelper (const SdnHelper &);
 
   /**
    * \internal
-   * \returns pointer to clone of this OlsrHelper 
+   * \returns pointer to clone of this SdnHelper
    * 
    * This method is mainly for internal use by the other helpers;
    * clients are expected to free the dynamic memory allocated by this method
    */
-  OlsrHelper* Copy (void) const;
+  SdnHelper* Copy (void) const;
 
   /**
     * \param node the node for which an exception is to be defined
-    * \param interface an interface of node on which OLSR is not to be installed
+    * \param interface an interface of node on which SDN is not to be installed
     *
-    * This method allows the user to specify an interface on which OLSR is not to be installed on
+    * This method allows the user to specify an interface on which SDN is not to be installed on
     */
   void ExcludeInterface (Ptr<Node> node, uint32_t interface);
 
@@ -96,18 +97,21 @@ public:
   */
   int64_t AssignStreams (NodeContainer c, int64_t stream);
 
+  void SetMobility (Ptr<MobilityModel> mo);
+
+
 private:
   /**
    * \internal
    * \brief Assignment operator declared private and not implemented to disallow
    * assignment and prevent the compiler from happily inserting its own.
    */
-  OlsrHelper &operator = (const OlsrHelper &o);
+  SdnHelper &operator = (const OlsrHelper &o);
   ObjectFactory m_agentFactory;
-
+  std::map< Ptr<Node>, Ptr<MobilityModel> > m_mobility;
   std::map< Ptr<Node>, std::set<uint32_t> > m_interfaceExclusions;
 };
 
 } // namespace ns3
 
-#endif /* OLSR_HELPER_H */
+#endif /* SDN_HELPER_H */
