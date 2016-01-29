@@ -18,7 +18,7 @@
  * Author: Haoliang Chen <chl41993@gmail.com>
  */
 #include "sdn-helper.h"
-#include "ns3/sdn-routing-protocol.h"
+#include "../model/sdn-routing-protocol.h"
 #include "ns3/node-list.h"
 #include "ns3/names.h"
 #include "ns3/ptr.h"

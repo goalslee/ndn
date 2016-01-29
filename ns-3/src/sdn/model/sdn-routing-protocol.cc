@@ -101,7 +101,8 @@ RoutingProtocol::RoutingProtocol ()
     m_helloTimer (Timer::CANCEL_ON_DESTROY),
     m_queuedMessagesTimer (Timer::CANCEL_ON_DESTROY),
     m_packetSequenceNumber (SDN_MAX_SEQ_NUM),
-    m_messageSequenceNumber (SDN_MAX_SEQ_NUM)
+    m_messageSequenceNumber (SDN_MAX_SEQ_NUM),
+    m_isCar (false)
 {
   m_uniformRandomVariable = CreateObject<UniformRandomVariable> ();
 }
@@ -192,7 +193,7 @@ RoutingProtocol::DoInitialize ()
       NS_ASSERT (m_mainAddress != Ipv4Address ());
     }
 
-  NS_LOG_DEBUG ("Starting SDN on node (Car) " << m_mainAddress);
+  NS_LOG_DEBUG ("Starting SDN on node " << m_mainAddress);
 
   Ipv4Address loopback ("127.0.0.1");
 
@@ -243,7 +244,6 @@ RoutingProtocol::DoInitialize ()
   if(canRunSdn)
     {
       HelloTimerExpire ();
-
       NS_LOG_DEBUG ("SDN on node (Car) " << m_mainAddress << " started");
     }
 }
@@ -273,7 +273,7 @@ RoutingProtocol::RecvSDN (Ptr<Socket> socket)
   Ipv4Address senderIfaceAddr = inetSourceAddr.GetIpv4 ();
   Ipv4Address receiverIfaceAddr = m_socketAddresses[socket].GetLocal ();
   NS_ASSERT (receiverIfaceAddr != Ipv4Address ());
-  NS_LOG_DEBUG ("SDN node (Car) " << m_mainAddress 
+  NS_LOG_DEBUG ("SDN node " << m_mainAddress
                 << " received a SDN packet from "
                 << senderIfaceAddr << " to " << receiverIfaceAddr);
 
@@ -329,7 +329,9 @@ RoutingProtocol::RecvSDN (Ptr<Socket> socket)
                         << "s SDN node " << m_mainAddress
                         << " received Routing message of size " 
                         << messageHeader.GetSerializedSize ());
-          ProcessRm (messageHeader);
+          //Controller Node should discare Hello_Message
+          if (IsCar ())
+            ProcessRm (messageHeader);
           break;
 
         case sdn::MessageHeader::HELLO_MESSAGE:
@@ -338,6 +340,8 @@ RoutingProtocol::RecvSDN (Ptr<Socket> socket)
                         << " received Routing message of size "
                         << messageHeader.GetSerializedSize ());
           //Car Node should discare Hello_Message
+          if (IsController ())
+            ProcessHM (messageHeader);
           break;
 
         default:
@@ -345,7 +349,7 @@ RoutingProtocol::RecvSDN (Ptr<Socket> socket)
                         int (messageHeader.GetMessageType ()) <<
                         " not implemented");
         }
-        
+
     }
     
 }// End of RecvSDN
@@ -697,8 +701,11 @@ RoutingProtocol::GetMessageSequenceNumber ()
 void
 RoutingProtocol::HelloTimerExpire ()
 {
-  SendHello ();
-  m_helloTimer.Schedule (m_helloInterval);
+  if (IsCar ())
+    {
+      SendHello ();
+      m_helloTimer.Schedule (m_helloInterval);
+    }
 }
 
 void
@@ -818,6 +825,44 @@ RoutingProtocol::SetMobility (Ptr<MobilityModel> mobility)
 {
   m_mobility = mobility;
 }
+
+void
+RoutingProtocol::SetType(NodeType nt)
+{
+  if (nt == CAR)
+    {
+      m_isCar = true;
+    }
+  else
+    {
+      m_isCar = false;
+    }
+}
+
+bool
+RoutingProtocol::IsCar() const
+{
+  return m_isCar;
+}
+
+bool
+RoutingProtocol::IsController() const
+{
+  return !m_isCar;
+}
+
+void
+RoutingProtocol::SendRoutingMessage ()
+{
+  // \TODO
+}
+
+void
+RoutingProtocol::ProcessHM (const sdn::MessageHeader &msg)
+{
+  // \TODO
+}
+
 
 
 } // namespace sdn

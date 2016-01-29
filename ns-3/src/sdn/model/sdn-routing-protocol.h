@@ -43,7 +43,7 @@ namespace ns3 {
 namespace sdn {
 
 
-
+enum NodeType {CAR, CONTROLLER};
 
 /// An SDN's routing table entry.
 struct RoutingTableEntry
@@ -185,8 +185,10 @@ private:
   void QueueMessage (const sdn::MessageHeader &message, Time delay);//implemented
   void SendQueuedMessages ();//implemented
   void SendHello ();//implemented
+  void SendRoutingMessage (); //Fullfilled
 
   void ProcessRm (const sdn::MessageHeader &msg);//implemented
+  void ProcessHM (const sdn::MessageHeader &msg); //Fullfilled
 
   /// Check that address is one of my interfaces
   bool IsMyOwnAddress (const Ipv4Address & a) const;//implemented
@@ -210,7 +212,15 @@ private:
   Ptr<MobilityModel> m_mobility;
 
 public:
-  void SetMobility (Ptr<MobilityModel> mobility);
+  void SetMobility (Ptr<MobilityModel> mobility);//implemented
+
+private:
+  bool m_isCar;
+
+public:
+  void SetType(NodeType nt); //implemented
+  bool IsCar() const; //implemented
+  bool IsController() const; //implemented
 
 
 };
