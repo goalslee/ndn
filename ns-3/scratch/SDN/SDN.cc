@@ -333,7 +333,7 @@ void VanetSim::ConfigTracing()
 void VanetSim::ProcessOutputs()
 {
 	Ptr<OnOffApplication> app = DynamicCast<OnOffApplication>(m_source.Get(0));
-	Tx_Data_Pkts = app->Tx_packets;
+	//Tx_Data_Pkts = app->Tx_packets;
 	std::cout<<Tx_Data_Pkts<<std::endl;
 	std::cout<<Rx_Data_Pkts<<std::endl;
 }
