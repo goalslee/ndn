@@ -139,7 +139,7 @@ public:
   }
   Time GetVTime () const
   {
-    return (0);
+    return Seconds(m_vTime);
   }
 
   void SetTimeToLive (uint16_t timeToLive)
