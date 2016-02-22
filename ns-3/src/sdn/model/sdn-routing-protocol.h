@@ -48,14 +48,14 @@ enum NodeType {CAR, CONTROLLER};
 /// An SDN's routing table entry.
 struct RoutingTableEntry
 {
-  Ipv4Address destAddr; ///< Address of the destination subnet.
-  Ipv4Address mask; ///< mask of the destination subnet.
-  Ipv4Address nextHop; ///< Address of the next hop.
-  uint32_t interface; ///< Interface index.
-
   RoutingTableEntry () : // default values
-                         destAddr (), nextHop (),
-                         mask(), interface (0) {};
+                           destAddr (), nextHop (),
+                           mask(), interface (0) {};
+
+  Ipv4Address destAddr; ///< Address of the destination subnet.
+  Ipv4Address nextHop; ///< Address of the next hop.
+  Ipv4Address mask; ///< mask of the destination subnet.
+  uint32_t interface; ///< Interface index.
 };
 
 class RoutingProtocol;

@@ -106,7 +106,7 @@ private:
    * \brief Assignment operator declared private and not implemented to disallow
    * assignment and prevent the compiler from happily inserting its own.
    */
-  SdnHelper &operator = (const OlsrHelper &o);
+  SdnHelper &operator = (const SdnHelper &o);
   ObjectFactory m_agentFactory;
   std::map< Ptr<Node>, Ptr<MobilityModel> > m_mobility;
   std::map< Ptr<Node>, std::set<uint32_t> > m_interfaceExclusions;

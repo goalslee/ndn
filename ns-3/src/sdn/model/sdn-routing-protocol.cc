@@ -97,11 +97,12 @@ RoutingProtocol::GetTypeId ()
 
 
 RoutingProtocol::RoutingProtocol ()
-  : m_ipv4 (0),
-    m_helloTimer (Timer::CANCEL_ON_DESTROY),
-    m_queuedMessagesTimer (Timer::CANCEL_ON_DESTROY),
+  :
     m_packetSequenceNumber (SDN_MAX_SEQ_NUM),
     m_messageSequenceNumber (SDN_MAX_SEQ_NUM),
+    m_ipv4 (0),
+    m_helloTimer (Timer::CANCEL_ON_DESTROY),
+    m_queuedMessagesTimer (Timer::CANCEL_ON_DESTROY),
     m_isCar (false)
 {
   m_uniformRandomVariable = CreateObject<UniformRandomVariable> ();
@@ -370,7 +371,7 @@ RoutingProtocol::ProcessRm (const sdn::MessageHeader &msg)
   
   Clear();
   
-  for (std::vector<sdn::MessageHeader::Rm::  Routing_Tuple>::iterator it = rm.routingTables.begin();
+  for (std::vector<sdn::MessageHeader::Rm::Routing_Tuple>::const_iterator it = rm.routingTables.begin();
         it != rm.routingTables.end();
         it++)
   {
@@ -657,30 +658,6 @@ RoutingProtocol::AssignStreams (int64_t stream)
   NS_LOG_FUNCTION (this << stream);
   m_uniformRandomVariable->SetStream (stream);
   return 1;
-}
-
-void
-RoutingProtocol::PrintRoutingTable (Ptr<OutputStreamWrapper> stream) const
-{
-  std::ostream* os = stream->GetStream ();
-  *os << "Destination\t\tMask\t\tNextHop\t\tInterface\n";
-
-  for (std::map<Ipv4Address, RoutingTableEntry>::const_iterator iter = m_table.begin ();
-       iter != m_table.end (); iter++)
-    {
-      *os << iter->first << "\t\t";
-      *os << iter->second.mask << "\t\t";
-      *os << iter->second.nextHop << "\t\t";
-      if (Names::FindName (m_ipv4->GetNetDevice (iter->second.interface)) != "")
-        {
-          *os << Names::FindName (m_ipv4->GetNetDevice (iter->second.interface));
-        }
-      else
-        {
-          *os << iter->second.interface;
-        }
-      *os << "\n";
-    }
 }
 
 uint16_t
