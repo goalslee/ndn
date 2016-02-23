@@ -74,6 +74,9 @@ SdnHelper::Create (Ptr<Node> node) const
       agent->SetInterfaceExclusions (it->second);
     }
 
+  std::map< Ptr<Node>, Ptr<MobilityModel> >::const_iterator it2 = m_mobility.find (node);
+  agent->SetMobility (it2->second);
+
   node->AggregateObject (agent);
   return agent;
 }
@@ -124,6 +127,20 @@ SdnHelper::AssignStreams (NodeContainer c, int64_t stream)
   return (currentStream - stream);
 
 }
+
+void
+SdnHelper::SetMobility (Ptr<Node> node, Ptr<MobilityModel> mo)
+{
+  std::map< Ptr<Node>, Ptr<MobilityModel> >::iterator it = m_mobility.find (node);
+
+  if (it != m_mobility.end())
+    {
+      std::cout<<"Duplicate Mobility on Node"<< node->GetId ()
+          <<". The new one will be used."<<std::endl;
+    }
+  m_mobility[node] = mo;
+}
+
 
 
 } // namespace ns3

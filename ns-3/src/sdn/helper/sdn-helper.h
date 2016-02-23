@@ -97,7 +97,7 @@ public:
   */
   int64_t AssignStreams (NodeContainer c, int64_t stream);
 
-  void SetMobility (Ptr<MobilityModel> mo);
+  void SetMobility (Ptr<Node> node, Ptr<MobilityModel> mo);
 
 
 private:
