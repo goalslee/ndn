@@ -41,6 +41,8 @@ uint32_t  IEEE754 (float dec);
 //        0                   1                   2                   3
 //        0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 //       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+//       |                          originator                           |
+//       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 //       |         Packet Length         |    Packet Sequence Number     |
 //       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 //       |  Message Type |     Vtime     |         Message Size          |
@@ -66,6 +68,8 @@ class PacketHeader : public Header
 public:
   PacketHeader ();
   virtual ~PacketHeader ();
+
+  Ipv4Address originator;
 
   void SetPacketLength (uint16_t length)
   {
