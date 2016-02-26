@@ -103,7 +103,7 @@ RoutingProtocol::RoutingProtocol ()
     m_ipv4 (0),
     m_helloTimer (Timer::CANCEL_ON_DESTROY),
     m_queuedMessagesTimer (Timer::CANCEL_ON_DESTROY),
-    m_isCar (false)
+    m_nodetype (OTHERS)
 {
   m_uniformRandomVariable = CreateObject<UniformRandomVariable> ();
 }
@@ -331,7 +331,7 @@ RoutingProtocol::RecvSDN (Ptr<Socket> socket)
                         << " received Routing message of size " 
                         << messageHeader.GetSerializedSize ());
           //Controller Node should discare Hello_Message
-          if (IsCar ())
+          if (GetType() == CAR)
             ProcessRm (messageHeader);
           break;
 
@@ -341,7 +341,7 @@ RoutingProtocol::RecvSDN (Ptr<Socket> socket)
                         << " received Routing message of size "
                         << messageHeader.GetSerializedSize ());
           //Car Node should discare Hello_Message
-          if (IsController ())
+          if (GetType() == LOCAL_CONTROLLER)
             ProcessHM (messageHeader);
           break;
 
@@ -678,7 +678,7 @@ RoutingProtocol::GetMessageSequenceNumber ()
 void
 RoutingProtocol::HelloTimerExpire ()
 {
-  if (IsCar ())
+  if (GetType() == CAR)
     {
       SendHello ();
       m_helloTimer.Schedule (m_helloInterval);
@@ -804,28 +804,15 @@ RoutingProtocol::SetMobility (Ptr<MobilityModel> mobility)
 }
 
 void
-RoutingProtocol::SetType(NodeType nt)
+RoutingProtocol::SetType (NodeType nt)
 {
-  if (nt == CAR)
-    {
-      m_isCar = true;
-    }
-  else
-    {
-      m_isCar = false;
-    }
+  m_nodetype = nt;
 }
 
-bool
-RoutingProtocol::IsCar() const
+NodeType
+RoutingProtocol::GetType () const
 {
-  return m_isCar;
-}
-
-bool
-RoutingProtocol::IsController() const
-{
-  return !m_isCar;
+  return m_nodetype;
 }
 
 void

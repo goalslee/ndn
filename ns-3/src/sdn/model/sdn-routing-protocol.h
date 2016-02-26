@@ -43,7 +43,7 @@ namespace ns3 {
 namespace sdn {
 
 
-enum NodeType {CAR, CONTROLLER};
+enum NodeType {CAR, LOCAL_CONTROLLER, OTHERS};
 
 /// An SDN's routing table entry.
 struct RoutingTableEntry
@@ -58,9 +58,18 @@ struct RoutingTableEntry
   uint32_t interface; ///< Interface index.
 };
 
+// A struct for LC to hold Information that got from cars
+struct CarStatus
+{
+  Vector3D Position;
+  Vector3D Velocity;
+  Time LastActive;//Timeout indicator
+  bool Active;
+};
+
 class RoutingProtocol;
 
-/// \brief SDN routing protocol (Car side) for IPv4
+/// \brief SDN routing protocol for IPv4
 ///
 class RoutingProtocol : public Ipv4RoutingProtocol
 {
@@ -112,7 +121,11 @@ public:
 protected:
   virtual void DoInitialize (void);//implemented
 private:
-  std::map<Ipv4Address, RoutingTableEntry> m_table; ///< Data structure for the routing table.
+  std::map<Ipv4Address, RoutingTableEntry> m_table; ///< Data structure for the routing table. (Use By Mainly by CAR Node, but LC needs it too)
+
+  std::map<Ipv4Address, std::vector<RoutingTableEntry> > m_lc_table;/// For LC
+
+  std::map<Ipv4Address, CarStatus> m_lc_status;///for LC
 
   EventGarbageCollector m_events;
 	
@@ -215,12 +228,11 @@ public:
   void SetMobility (Ptr<MobilityModel> mobility);//implemented
 
 private:
-  bool m_isCar;
+  NodeType m_nodetype;
 
 public:
   void SetType(NodeType nt); //implemented
-  bool IsCar() const; //implemented
-  bool IsController() const; //implemented
+  NodeType GetType() const; //implemented
 
 
 };
