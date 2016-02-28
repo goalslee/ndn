@@ -315,7 +315,7 @@ RoutingProtocol::RecvSDN (Ptr<Socket> socket)
       // If ttl is less than or equal to zero, or
       // the receiver is the same as the originator,
       // the message must be silently dropped
-      if (messageHeader.GetTimeToLive () == 0)
+      if ((messageHeader.GetTimeToLive () == 0)||(IsMyOwnAddress (sdnPacketHeader.originator)))
         {
           // swallow it
           packet->RemoveAtStart (messageHeader.GetSerializedSize ());
@@ -363,25 +363,29 @@ RoutingProtocol::ProcessRm (const sdn::MessageHeader &msg)
   NS_LOG_FUNCTION (msg);
   
   const sdn::MessageHeader::Rm &rm = msg.GetRm();
-  Time now = Simulator::Now();
-  NS_LOG_DEBUG ("@" << now.GetSeconds() << ":Node " << m_mainAddress
-                << "ProcessRm.");
-  
-  NS_ASSERT (rm.GetRoutingMessageSize() >= 0);
-  
-  Clear();
-  
-  for (std::vector<sdn::MessageHeader::Rm::Routing_Tuple>::const_iterator it = rm.routingTables.begin();
-        it != rm.routingTables.end();
-        it++)
-  {
+  // Check if this rm is for me
+  // Ignore rm that ID does not match.
+  if (IsMyOwnAddress (rm.ID))
+    {
+      Time now = Simulator::Now();
+      NS_LOG_DEBUG ("@" << now.GetSeconds() << ":Node " << m_mainAddress
+                    << "ProcessRm.");
 
-    AddEntry(it->destAddress,
-             it->mask,
-             it->nextHop,
-             0);
-  }
+      NS_ASSERT (rm.GetRoutingMessageSize() >= 0);
 
+      Clear();
+
+      for (std::vector<sdn::MessageHeader::Rm::Routing_Tuple>::const_iterator it = rm.routingTables.begin();
+            it != rm.routingTables.end();
+            it++)
+      {
+
+        AddEntry(it->destAddress,
+                 it->mask,
+                 it->nextHop,
+                 0);
+      }
+    }
 }
 
 void
@@ -685,6 +689,8 @@ RoutingProtocol::HelloTimerExpire ()
     }
 }
 
+
+// SDN packets actually send here.
 void
 RoutingProtocol::SendPacket (Ptr<Packet> packet,
                              const MessageList &containedMessages)
@@ -693,6 +699,7 @@ RoutingProtocol::SendPacket (Ptr<Packet> packet,
 
   // Add a header
   sdn::PacketHeader header;
+  header.originator = this->m_mainAddress;
   header.SetPacketLength (header.GetSerializedSize () + packet->GetSize ());
   header.SetPacketSequenceNumber (GetPacketSequenceNumber ());
   packet->AddHeader (header);
@@ -722,6 +729,8 @@ RoutingProtocol::QueueMessage (const sdn::MessageHeader &message, Time delay)
 
 
 // NS3 is not multithread, so mutex is unnecessary.
+// Here, messages will queue up and send once numMessage is equl to SDN_MAX_MSGS.
+// This function will NOT add a header to each message
 void
 RoutingProtocol::SendQueuedMessages ()
 {

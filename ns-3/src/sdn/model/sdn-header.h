@@ -285,7 +285,7 @@ public:
   //       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
   //       :                                                               :
   //       :                               :
-
+  //   ID is the car's ID of this routing table.
   struct Rm
   {
     struct Routing_Tuple{
