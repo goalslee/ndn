@@ -34,7 +34,7 @@ SdnHelper::SdnHelper ()
 SdnHelper::SdnHelper (const SdnHelper &o)
   : m_agentFactory (o.m_agentFactory)
 {
-  m_mobility = o.m_mobility;
+  //m_mobility = o.m_mobility;
   m_interfaceExclusions = o.m_interfaceExclusions;
 }
 
@@ -74,8 +74,16 @@ SdnHelper::Create (Ptr<Node> node) const
       agent->SetInterfaceExclusions (it->second);
     }
 
+  Ptr<MobilityModel> temp = node -> GetObject<MobilityModel> ();
+  agent->SetMobility (temp);
+
+/*
   std::map< Ptr<Node>, Ptr<MobilityModel> >::const_iterator it2 = m_mobility.find (node);
-  agent->SetMobility (it2->second);
+  if(it2 != m_mobility.end ())
+    {
+      agent->SetMobility (it2->second);
+    }
+*/
 
   node->AggregateObject (agent);
   return agent;
@@ -128,6 +136,8 @@ SdnHelper::AssignStreams (NodeContainer c, int64_t stream)
 
 }
 
+
+/*
 void
 SdnHelper::SetMobility (Ptr<Node> node, Ptr<MobilityModel> mo)
 {
@@ -140,7 +150,7 @@ SdnHelper::SetMobility (Ptr<Node> node, Ptr<MobilityModel> mo)
     }
   m_mobility[node] = mo;
 }
-
+*/
 
 
 } // namespace ns3

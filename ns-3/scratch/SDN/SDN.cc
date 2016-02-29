@@ -260,6 +260,8 @@ void VanetSim::ConfigApp()
 	}
 	else
 	{
+	  SdnHelper sdn;
+	  internet.SetRoutingHelper(sdn);
 		std::cout<<"SDN"<<std::endl;
 	}
 	internet.Install (m_nodes);

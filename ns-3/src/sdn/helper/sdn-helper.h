@@ -91,14 +91,17 @@ public:
   * should have previously been called by the user.
   *
   * \param stream first stream index to use
-  * \param c NodeContainer of the set of nodes for which the OlsrRoutingProtocol
+  * \param c NodeContainer of the set of nodes for which the SdnRoutingProtocol
   *          should be modified to use a fixed stream
   * \return the number of stream indices assigned by this helper
   */
   int64_t AssignStreams (NodeContainer c, int64_t stream);
 
-  void SetMobility (Ptr<Node> node, Ptr<MobilityModel> mo);
-
+  //Wrong => If the object, mobility has been installed into the node, we can get node's mobility from using GetObject()
+  //Ipv4Routing just get IPV4 object from the node, so mobility must pass to this algorithm by other methods.
+  //But node will pass to helper while calling the Create function, so it can be done there.
+  /*void SetMobility (Ptr<Node> node, Ptr<MobilityModel> mo);
+*/
 
 private:
   /**
@@ -108,7 +111,7 @@ private:
    */
   SdnHelper &operator = (const SdnHelper &o);
   ObjectFactory m_agentFactory;
-  std::map< Ptr<Node>, Ptr<MobilityModel> > m_mobility;
+  //std::map< Ptr<Node>, Ptr<MobilityModel> > m_mobility;
   std::map< Ptr<Node>, std::set<uint32_t> > m_interfaceExclusions;
 };
 
