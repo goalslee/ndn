@@ -261,6 +261,14 @@ void VanetSim::ConfigApp()
 	else
 	{
 	  SdnHelper sdn;
+	  for (uint32_t i = 0; i<nodeNum; ++i)
+	    {
+	      sdn.SetNodeTypeMap (m_nodes.Get (i), sdn::CAR);
+	    }
+	  sdn.SetNodeTypeMap (m_nodes.Get (nodeNum), sdn::LOCAL_CONTROLLER);
+	  sdn.SetNodeTypeMap (m_nodes.Get (nodeNum+1), sdn::CAR);//Treat Source and Sink as CAR
+	  sdn.SetNodeTypeMap (m_nodes.Get (nodeNum+2), sdn::CAR);
+
 	  internet.SetRoutingHelper(sdn);
 		std::cout<<"SDN"<<std::endl;
 	}
