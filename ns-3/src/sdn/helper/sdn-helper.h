@@ -25,6 +25,7 @@
 #include "ns3/node-container.h"
 #include "ns3/ipv4-routing-helper.h"
 #include "ns3/mobility-module.h"
+#include "ns3/sdn-routing-protocol.h"
 #include <map>
 #include <set>
 
@@ -103,6 +104,12 @@ public:
   /*void SetMobility (Ptr<Node> node, Ptr<MobilityModel> mo);
 */
 
+
+  /**
+   * Set Node type to nodes
+   */
+  void SetNodeTypeMap (Ptr<Node> node, sdn::NodeType nt);
+
 private:
   /**
    * \internal
@@ -112,6 +119,7 @@ private:
   SdnHelper &operator = (const SdnHelper &o);
   ObjectFactory m_agentFactory;
   //std::map< Ptr<Node>, Ptr<MobilityModel> > m_mobility;
+  std::map< Ptr<Node>, sdn::NodeType > m_ntmap;
   std::map< Ptr<Node>, std::set<uint32_t> > m_interfaceExclusions;
 };
 

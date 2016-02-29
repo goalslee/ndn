@@ -85,6 +85,16 @@ SdnHelper::Create (Ptr<Node> node) const
     }
 */
 
+  std::map< Ptr<Node>, sdn::NodeType >::const_iterator it3 = m_ntmap.find (node);
+  if (it3 != m_ntmap.end ())
+    {
+      agent->SetType (it3->second);
+    }
+  else
+    {
+      agent->SetType (sdn::OTHERS);
+    }
+
   node->AggregateObject (agent);
   return agent;
 }
@@ -151,6 +161,18 @@ SdnHelper::SetMobility (Ptr<Node> node, Ptr<MobilityModel> mo)
   m_mobility[node] = mo;
 }
 */
+
+void
+SdnHelper::SetNodeTypeMap (Ptr<Node> node, sdn::NodeType nt)
+{
+  std::map< Ptr<Node> , sdn::NodeType >::iterator it = m_ntmap.find(node);
+
+  if (it != m_ntmap.end() )
+    {
+      std::cout<<"Duplicate NodeType on Node: "<< node->GetId()<<std::endl;
+    }
+  m_ntmap[node]=nt;
+}
 
 
 } // namespace ns3
