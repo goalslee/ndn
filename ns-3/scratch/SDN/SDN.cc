@@ -70,7 +70,8 @@ void VanetSim::Simulate(int argc, char *argv[])
 	ConfigApp();
 	ConfigTracing();
 	Run();
-	ProcessOutputs();
+	//ProcessOutputs();
+	std::cout<<std::endl;
 }
 
 void VanetSim::SetDefault()
@@ -266,6 +267,7 @@ void VanetSim::ConfigApp()
 	      sdn.SetNodeTypeMap (m_nodes.Get (i), sdn::CAR);
 	    }
 	  sdn.SetNodeTypeMap (m_nodes.Get (nodeNum), sdn::LOCAL_CONTROLLER);
+	  sdn.ExcludeInterface (m_nodes.Get (nodeNum), 0);
 	  sdn.SetNodeTypeMap (m_nodes.Get (nodeNum+1), sdn::CAR);//Treat Source and Sink as CAR
 	  sdn.SetNodeTypeMap (m_nodes.Get (nodeNum+2), sdn::CAR);
 
@@ -281,6 +283,8 @@ void VanetSim::ConfigApp()
 	NS_LOG_INFO ("Assign IP Addresses.");
 	ipv4S.SetBase ("10.1.1.0", "255.255.255.0");//SCH
 	m_SCHInterface = ipv4S.Assign (m_SCHDevices);
+	std::cout<<"IPV4S Done"<<std::endl;
+
 
 	if (mod ==1)
 	{
@@ -288,6 +292,7 @@ void VanetSim::ConfigApp()
 		NS_LOG_INFO ("Assign IP-C Addresses.");
 		ipv4C.SetBase("192.168.0.0","255.255.255.0");//CCH
 		m_CCHInterface = ipv4C.Assign(m_CCHDevices);
+		std::cout<<"IPV4C Done"<<std::endl;
 	}
 
 
@@ -360,12 +365,14 @@ void VanetSim::Run()
 
 void VanetSim::Look_at_clock()
 {
-	std::cout<<"Now:"<<Simulator::Now().GetSeconds()<<std::endl;
+	std::cout<<"Now:"<<Simulator::Now().GetSeconds();//<<std::endl;
+	/*
 	os<<"Now:"<<Simulator::Now().GetSeconds()<<std::endl;
 	Ptr<OutputStreamWrapper> osw = Create<OutputStreamWrapper> (&std::cout);
 	m_nodes.Get(nodeNum+1)->GetObject<Ipv4>()->GetRoutingProtocol()->PrintRoutingTable(osw);
 	Ptr<OutputStreamWrapper> osw2 = Create<OutputStreamWrapper> (&os);
 	m_nodes.Get(nodeNum+1)->GetObject<Ipv4>()->GetRoutingProtocol()->PrintRoutingTable(osw2);
+	*/
 	/*2  Ptr<MobilityModel> Temp;
 	Vector vt;
 	for (int i = 0;i<=nodeNum+2;++i)
@@ -375,7 +382,7 @@ void VanetSim::Look_at_clock()
 		std::cout<<i<<":"<<vt.x<<","<<vt.y<<","<<vt.z<<";"<<std::flush;
 	}
 	std::cout<<std::endl;*/
-	ProcessOutputs();
+	//ProcessOutputs();
 
 	Simulator::Schedule(Seconds(1.0), &VanetSim::Look_at_clock, this);
 }

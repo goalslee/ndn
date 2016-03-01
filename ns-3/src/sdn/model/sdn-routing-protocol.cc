@@ -182,19 +182,67 @@ RoutingProtocol::DoInitialize ()
   if (m_mainAddress == Ipv4Address ())
     {
       Ipv4Address loopback ("127.0.0.1");
+      uint32_t count = 0;
+      std::cout<<m_ipv4->GetNInterfaces ()<<std::endl;
       for (uint32_t i = 0; i < m_ipv4->GetNInterfaces (); i++)
         {
-          // Use first address as ID, if multiple
+          // CAR Use first address as ID
+          // LC Use secend address as ID
           Ipv4Address addr = m_ipv4->GetAddress (i, 0).GetLocal ();
+
+          uint32_t ip = addr.Get ();
+          uint32_t a,b,c,d;
+          a = ip % 256;
+          ip = ip / 256;
+          b = ip % 256;
+          ip = ip / 256;
+          c = ip % 256;
+          d = ip / 256;
+          std::cout<<"ITF:"<<d<<"."<<c<<"."<<b<<"."<<a<<std::endl;
+
+          switch (m_nodetype)
+          {
+            case CAR:
+              std::cout<<"This is a CAR"<<std::endl;
+              break;
+            case LOCAL_CONTROLLER:
+              std::cout<<"This is a LC"<<std::endl;
+              break;
+            case OTHERS:
+              std::cout<<"This is a OTHERS"<<std::endl;
+          }
+
           if (addr != loopback)
             {
-              m_mainAddress = addr;
-              break;
+              if (m_nodetype == CAR)
+                {
+                  m_mainAddress = addr;
+                  break;
+                }
+              else
+                if (m_nodetype == LOCAL_CONTROLLER)
+                  {
+                    if (count == 1)
+                      {
+                        m_mainAddress = addr;
+                        break;
+                      }
+                    count++;
+                  }
             }
         }
 
       NS_ASSERT (m_mainAddress != Ipv4Address ());
     }
+  uint32_t ip = m_mainAddress.Get ();
+  uint32_t a,b,c,d;
+  a = ip % 256;
+  ip = ip / 256;
+  b = ip % 256;
+  ip = ip / 256;
+  c = ip % 256;
+  d = ip / 256;
+  std::cout<<"doinit:"<<d<<"."<<c<<"."<<b<<"."<<a<<std::endl;
 
   NS_LOG_DEBUG ("Starting SDN on node " << m_mainAddress);
 
@@ -254,12 +302,14 @@ RoutingProtocol::DoInitialize ()
 void 
 RoutingProtocol::SetMainInterface (uint32_t interface)
 {
+  std::cout<<"SetmainInterface"<<std::endl;
   m_mainAddress = m_ipv4->GetAddress (interface, 0).GetLocal ();
 }
 
 void 
 RoutingProtocol::SetInterfaceExclusions (std::set<uint32_t> exceptions)
 {
+  std::cout<<"SetEx"<<std::endl;
   m_interfaceExclusions = exceptions;
 }
 
@@ -268,6 +318,7 @@ RoutingProtocol::SetInterfaceExclusions (std::set<uint32_t> exceptions)
 void
 RoutingProtocol::RecvSDN (Ptr<Socket> socket)
 {
+  std::cout<<"RecvSDN"<<std::endl;
   Ptr<Packet> receivedPacket;
   Address sourceAddress;
   receivedPacket = socket->RecvFrom (sourceAddress);
@@ -817,6 +868,18 @@ RoutingProtocol::SetMobility (Ptr<MobilityModel> mobility)
 void
 RoutingProtocol::SetType (NodeType nt)
 {
+  switch (nt)
+  {
+    case CAR:
+      std::cout<<"C"<<std::endl;
+      break;
+    case LOCAL_CONTROLLER:
+      std::cout<<"L"<<std::endl;
+      break;
+    case OTHERS:
+      std::cout<<"O"<<std::endl;
+      break;
+  }
   m_nodetype = nt;
 }
 

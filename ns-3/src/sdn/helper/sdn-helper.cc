@@ -35,6 +35,7 @@ SdnHelper::SdnHelper (const SdnHelper &o)
 {
   //m_mobility = o.m_mobility;
   m_interfaceExclusions = o.m_interfaceExclusions;
+  m_ntmap = o.m_ntmap;
 }
 
 SdnHelper*
@@ -59,6 +60,7 @@ SdnHelper::ExcludeInterface (Ptr<Node> node, uint32_t interface)
     {
       it->second.insert (interface);
     }
+  std::cout<<"E"<<m_interfaceExclusions.size()<<std::endl;
 }
 
 Ptr<Ipv4RoutingProtocol>
@@ -68,6 +70,7 @@ SdnHelper::Create (Ptr<Node> node) const
 
   std::map<Ptr<Node>, std::set<uint32_t> >::const_iterator it = m_interfaceExclusions.find (node);
 
+  std::cout<<"CR"<<m_interfaceExclusions.size()<<std::endl;
   if(it != m_interfaceExclusions.end ())
     {
       agent->SetInterfaceExclusions (it->second);
@@ -83,7 +86,7 @@ SdnHelper::Create (Ptr<Node> node) const
       agent->SetMobility (it2->second);
     }
 */
-
+  std::cout<<"MS"<<m_ntmap.size()<<std::endl;
   std::map< Ptr<Node>, sdn::NodeType >::const_iterator it3 = m_ntmap.find (node);
   if (it3 != m_ntmap.end ())
     {
@@ -166,11 +169,13 @@ SdnHelper::SetNodeTypeMap (Ptr<Node> node, sdn::NodeType nt)
 {
   std::map< Ptr<Node> , sdn::NodeType >::iterator it = m_ntmap.find(node);
 
+  std::cout<<"B4"<<m_ntmap.size();
   if (it != m_ntmap.end() )
     {
       std::cout<<"Duplicate NodeType on Node: "<< node->GetId()<<std::endl;
     }
-  m_ntmap[node]=nt;
+  m_ntmap[node] = nt;
+  std::cout<<" A4T"<<m_ntmap.size()<<std::endl;
 }
 
 
