@@ -91,7 +91,9 @@ NS_OBJECT_ENSURE_REGISTERED (RoutingProtocol);
 TypeId
 RoutingProtocol::GetTypeId ()
 {
-  static TypeId tid = TypeId ("ns3::sdn::RoutingProtocol");
+  static TypeId tid = TypeId ("ns3::sdn::RoutingProtocol")
+    .SetParent<Ipv4RoutingProtocol> ()
+    .AddConstructor<RoutingProtocol> ();
   return tid;
 }
 
