@@ -102,6 +102,7 @@ RoutingProtocol::RoutingProtocol ()
   :
     m_packetSequenceNumber (SDN_MAX_SEQ_NUM),
     m_messageSequenceNumber (SDN_MAX_SEQ_NUM),
+    m_helloInterval (Seconds(1)),
     m_ipv4 (0),
     m_helloTimer (Timer::CANCEL_ON_DESTROY),
     m_queuedMessagesTimer (Timer::CANCEL_ON_DESTROY),
@@ -183,13 +184,13 @@ RoutingProtocol::DoInitialize ()
     {
       Ipv4Address loopback ("127.0.0.1");
       uint32_t count = 0;
-      std::cout<<m_ipv4->GetNInterfaces ()<<std::endl;
+      //std::cout<<m_ipv4->GetNInterfaces ()<<std::endl;
       for (uint32_t i = 0; i < m_ipv4->GetNInterfaces (); i++)
         {
           // CAR Use first address as ID
           // LC Use secend address as ID
           Ipv4Address addr = m_ipv4->GetAddress (i, 0).GetLocal ();
-
+          /*
           uint32_t ip = addr.Get ();
           uint32_t a,b,c,d;
           a = ip % 256;
@@ -211,7 +212,7 @@ RoutingProtocol::DoInitialize ()
             case OTHERS:
               std::cout<<"This is a OTHERS"<<std::endl;
           }
-
+          */
           if (addr != loopback)
             {
               if (m_nodetype == CAR)
@@ -234,6 +235,7 @@ RoutingProtocol::DoInitialize ()
 
       NS_ASSERT (m_mainAddress != Ipv4Address ());
     }
+  /*
   uint32_t ip = m_mainAddress.Get ();
   uint32_t a,b,c,d;
   a = ip % 256;
@@ -243,6 +245,7 @@ RoutingProtocol::DoInitialize ()
   c = ip % 256;
   d = ip / 256;
   std::cout<<"doinit:"<<d<<"."<<c<<"."<<b<<"."<<a<<std::endl;
+  */
 
   NS_LOG_DEBUG ("Starting SDN on node " << m_mainAddress);
 
@@ -309,7 +312,7 @@ RoutingProtocol::SetMainInterface (uint32_t interface)
 void 
 RoutingProtocol::SetInterfaceExclusions (std::set<uint32_t> exceptions)
 {
-  std::cout<<"SetEx"<<std::endl;
+  //std::cout<<"SetEx"<<std::endl;
   m_interfaceExclusions = exceptions;
 }
 
@@ -318,7 +321,7 @@ RoutingProtocol::SetInterfaceExclusions (std::set<uint32_t> exceptions)
 void
 RoutingProtocol::RecvSDN (Ptr<Socket> socket)
 {
-  std::cout<<"RecvSDN"<<std::endl;
+  std::cout<<"RecvSDN "<<m_mainAddress.Get ()%256<<", Time:"<<Simulator::Now ().GetSeconds ()<<std::endl;
   Ptr<Packet> receivedPacket;
   Address sourceAddress;
   receivedPacket = socket->RecvFrom (sourceAddress);
@@ -548,7 +551,7 @@ RoutingProtocol::RouteInput(Ptr<const Packet> p,
 
   Ipv4Address dest = header.GetDestination();
   Ipv4Address sour = header.GetSource();
-
+  std::cout<<"RouteOutput "<<m_mainAddress.Get ()%256 <<",Source:"<<sour.Get ()%256<< ",Dest:"<<dest.Get ()%256<<std::endl;
   // Consume self-originated packets
   if (IsMyOwnAddress (sour) == true)
     {
@@ -637,7 +640,7 @@ RoutingProtocol::RouteOutput (Ptr<Packet> p,
   NS_LOG_FUNCTION (this << " " << m_ipv4->GetObject<Node> ()->GetId () << " " << header.GetDestination () << " " << oif);
   Ptr<Ipv4Route> rtentry;
   RoutingTableEntry entry;
-
+  std::cout<<"RouteOutput "<<m_mainAddress.Get ()%256 << ",Dest:"<<header.GetDestination ().Get ()%256<<std::endl;
   if (Lookup (header.GetDestination (), entry))
     {
       uint32_t interfaceIdx = entry.interface;
@@ -735,6 +738,9 @@ RoutingProtocol::GetMessageSequenceNumber ()
 void
 RoutingProtocol::HelloTimerExpire ()
 {
+  std::cout<<"HelloTimeExpire "<<m_mainAddress.Get ()%256;
+  std::cout<<", Time:"<<Simulator::Now().GetSeconds ()<<std::endl;
+
   if (GetType() == CAR)
     {
       SendHello ();
@@ -749,7 +755,7 @@ RoutingProtocol::SendPacket (Ptr<Packet> packet,
                              const MessageList &containedMessages)
 {
   NS_LOG_DEBUG ("SDN node " << m_mainAddress << " sending a SDN packet");
-
+  std::cout<<"SendPacket  "<<m_mainAddress.Get ()%256 <<std::endl;
   // Add a header
   sdn::PacketHeader header;
   header.originator = this->m_mainAddress;
@@ -772,6 +778,7 @@ RoutingProtocol::SendPacket (Ptr<Packet> packet,
 void
 RoutingProtocol::QueueMessage (const sdn::MessageHeader &message, Time delay)
 {
+  std::cout<<"QueueMessage  "<<m_mainAddress.Get ()%256 <<std::endl;
   m_queuedMessages.push_back (message);
   if (not m_queuedMessagesTimer.IsRunning ())
     {
@@ -791,7 +798,7 @@ RoutingProtocol::SendQueuedMessages ()
   int numMessages = 0;
 
   NS_LOG_DEBUG ("SDN node " << m_mainAddress << ": SendQueuedMessages");
-
+  std::cout<<"SendQueuedMessages  "<<m_mainAddress.Get ()%256 <<std::endl;
   MessageList msglist;
 
   for (std::vector<sdn::MessageHeader>::const_iterator message = m_queuedMessages.begin ();
@@ -841,7 +848,7 @@ RoutingProtocol::SendHello ()
   NS_LOG_FUNCTION (this);
   sdn::MessageHeader msg;
   Time now = Simulator::Now ();
-  msg.SetVTime (m_helloInterval);//Useless now.
+  msg.SetVTime (m_helloInterval);
   msg.SetTimeToLive (41993);//Just MY Birthday.
   msg.SetMessageSequenceNumber (GetMessageSequenceNumber ());
   msg.SetMessageType (sdn::MessageHeader::HELLO_MESSAGE);
@@ -855,7 +862,8 @@ RoutingProtocol::SendHello ()
 
   NS_LOG_DEBUG ( "SDN HELLO_MESSAGE sent by node: " << hello.ID
                  << "   at " << now.GetSeconds() << "s");
-
+  std::cout<<"SendHello "<<m_mainAddress.Get ()%256 <<"Pos:"<<pos.x<<","<<pos.y<<","<<pos.z;
+  std::cout<<" Vel:"<<vel.x<<","<<vel.y<<","<<vel.z<<std::endl;
   QueueMessage (msg, JITTER);
 }
 
@@ -868,6 +876,7 @@ RoutingProtocol::SetMobility (Ptr<MobilityModel> mobility)
 void
 RoutingProtocol::SetType (NodeType nt)
 {
+  /*
   switch (nt)
   {
     case CAR:
@@ -879,7 +888,7 @@ RoutingProtocol::SetType (NodeType nt)
     case OTHERS:
       std::cout<<"O"<<std::endl;
       break;
-  }
+  }*/
   m_nodetype = nt;
 }
 

@@ -13,7 +13,6 @@
 #include "ns3/core-module.h"
 #include "ns3/mobility-module.h"
 #include "ns3/ns2-mobility-helper.h"
-#include "ns3/netanim-module.h"
 #include "ns3/network-module.h"
 #include "ns3/config-store-module.h"
 #include "ns3/wifi-module.h"

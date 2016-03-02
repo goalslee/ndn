@@ -272,18 +272,18 @@ void VanetSim::ConfigApp()
 	  sdn.SetNodeTypeMap (m_nodes.Get (nodeNum+2), sdn::CAR);
 
 	  internet.SetRoutingHelper(sdn);
-		std::cout<<"SDN"<<std::endl;
+		std::cout<<"SetRoutingHelper Done"<<std::endl;
 	}
 	internet.Install (m_nodes);
 
-	std::cout<<"Now Internet Done"<<std::endl;
+	std::cout<<"internet.Install Done"<<std::endl;
 
 	//===IP ADDRESS
 	Ipv4AddressHelper ipv4S;
 	NS_LOG_INFO ("Assign IP Addresses.");
 	ipv4S.SetBase ("10.1.1.0", "255.255.255.0");//SCH
 	m_SCHInterface = ipv4S.Assign (m_SCHDevices);
-	std::cout<<"IPV4S Done"<<std::endl;
+	std::cout<<"IPV4S Assigned"<<std::endl;
 
 
 	if (mod ==1)
@@ -292,7 +292,7 @@ void VanetSim::ConfigApp()
 		NS_LOG_INFO ("Assign IP-C Addresses.");
 		ipv4C.SetBase("192.168.0.0","255.255.255.0");//CCH
 		m_CCHInterface = ipv4C.Assign(m_CCHDevices);
-		std::cout<<"IPV4C Done"<<std::endl;
+		std::cout<<"IPV4C Assigned"<<std::endl;
 	}
 
 
