@@ -43,6 +43,7 @@ ConstantPositionMobilityModel::~ConstantPositionMobilityModel ()
 Vector
 ConstantPositionMobilityModel::DoGetPosition (void) const
 {
+  //std::cout<<"ConstantPositionMobilityModel::DoGetPosition"<<std::endl;
   return m_position;
 }
 void
@@ -54,6 +55,7 @@ ConstantPositionMobilityModel::DoSetPosition (const Vector &position)
 Vector
 ConstantPositionMobilityModel::DoGetVelocity (void) const
 {
+  //std::cout<<"ConstantPositionMobilityModel::DoGetVelocity"<<std::endl;
   return Vector (0.0, 0.0, 0.0);
 }
 

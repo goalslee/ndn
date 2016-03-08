@@ -3,6 +3,8 @@
  *
  *  Created on: Dec 31, 2014
  *      Author: chen
+ *  Modified on March, 2016
+ *      Author: another chen
  */
 
 
@@ -67,70 +69,45 @@ double SumoMobility::GetStopTime(uint32_t id)
 
 void SumoMobility::Install()
 {
-
+  std::cout<<"SumoMobility::Install"<<std::endl;
 	MobilityHelper mobility;
-	Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator> ();
 
-	int siu_i=0;
-	//Initialize the position of each vehicle, although it may appear later, it is placed once the simulation starts
-	for(vector<Vehicle>::const_iterator vehicle =vl.getVehicles().begin();vehicle!=vl.getVehicles().end();vehicle++)
-	{
-		std::cout<<"初始化车辆位置："<<siu_i<<"   "<<std::endl;
-		double pos_x =(*vehicle).trace.front().x;
-		double pos_y =(*vehicle).trace.front().y;
-		positionAlloc->Add(Vector(pos_x,pos_y,0.0));
-		siu_i++;
-	}
-	mobility.SetPositionAllocator (positionAlloc);
-	mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
-	mobility.Install (NodeContainer::GetGlobal());
-
-	///setup way point mobility
 	bool lazyNotify = true;
-	ObjectFactory mobilityFactory;
-	std::deque<Waypoint> waypoints;
-	mobilityFactory.SetTypeId("ns3::WaypointMobilityModel");
-	mobilityFactory.Set("LazyNotify", BooleanValue(lazyNotify));
-	std::vector<Ptr<MobilityModel> > mobilityStack;
-
+	bool initialPositionIsWaypoint = false;
+	mobility.SetMobilityModel ("ns3::WaypointMobilityModel","LazyNotify",BooleanValue (lazyNotify),
+	                           "InitialPositionIsWaypoint",BooleanValue (initialPositionIsWaypoint));
+	mobility.Install (NodeContainer::GetGlobal());
+  std::cout<<"mobility.Install"<<std::endl;
 	double maxTime = 0;
+	uint32_t CarNumber = 0;
 	// Populate the vector of mobility models, each model for a vehicle
 	for (vector<Vehicle>::const_iterator vehicle =vl.getVehicles().begin();vehicle!=vl.getVehicles().end();vehicle++)
 	{
 		double end_time=0.0;
-		// Create a new mobility model.
-		Ptr<MobilityModel> model = mobilityFactory.Create()->GetObject<MobilityModel>();
 		// Add this mobility model to the stack.
-		Ptr<WaypointMobilityModel> waypointmodel = model->GetObject<WaypointMobilityModel>();
-		//Add a initial position(0,0,10000)
-		waypointmodel->AddWaypoint(Waypoint(Seconds((*((*vehicle).trace).begin()).time-1.0),Vector(10000.0,10000.0,10000.0)));
+		Ptr<WaypointMobilityModel> waypointmodel =
+		    NodeList::GetNode (CarNumber)->GetObject<MobilityModel> ()->GetObject<WaypointMobilityModel> ();
+		//Add a initial position(10000,10000,10000)
+		if ((*((*vehicle).trace).begin()).time >= 1.0)
+		  waypointmodel->AddWaypoint(Waypoint(Seconds((*((*vehicle).trace).begin()).time-1.0),Vector(10000.0,10000.0,10000.0)));
 		// Add the trace into the way point model
 		for(vector<Trace>::const_iterator t=(*vehicle).trace.begin();t!=(*vehicle).trace.end();t++)
 		{
-			// Create waypoints
+			// Add waypoints
 			end_time = (*t).time;
-			if(end_time>maxTime)maxTime=end_time;
+			if (end_time>maxTime)
+			  maxTime=end_time;
 			Waypoint wp(Seconds(end_time),Vector((*t).x,(*t).y,0.0));
 			waypointmodel->AddWaypoint(wp);
 		}
-		//Add a final position(0,0,-10000)
-		waypointmodel->AddWaypoint(Waypoint(Seconds(end_time+1.0),Vector(-10000.0,-10000.0,-10000.0)));
-		mobilityStack.push_back(model);
-
-		//call the initialize method while at time the vehicle depart
-		Time start_model_time = Seconds((*(*vehicle).trace.begin()).time);
-		Simulator::Schedule(start_model_time, &Object::Initialize, model);
+		//Add a final position(-10000,-10000,-10000)
+		waypointmodel->AddWaypoint(Waypoint(Seconds(end_time+0.1),Vector(-10000.0,-10000.0,-10000.0)));
+		std::cout<<"Waypoints for car no."<<CarNumber<<"set."<<std::endl;
+		CarNumber++;
 	}
 
 	cout<<"Max time in fcdoutput.xml is "<<maxTime<<endl;
 	readTotalTime = maxTime+1;
-	// Schedule updates at non-waypoint times to make sure lazy notifications don't happen
-	for (double updateTime = 0.5; updateTime <= ((double)maxTime  + 1.5);
-			updateTime += 1.0)
-	{
-		Simulator::Schedule(Seconds(updateTime), &SumoMobility::ForceUpdates, this,mobilityStack);
-	}
-
 }
 
 void SumoMobility::ForceUpdates(std::vector<Ptr<MobilityModel> > mobilityStack)
