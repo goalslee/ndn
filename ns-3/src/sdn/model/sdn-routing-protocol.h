@@ -190,6 +190,9 @@ private:
   Timer m_helloTimer;
   void HelloTimerExpire ();//implemented
 
+  Timer m_rmTimer;
+  void RmTimerExpire ();//implemented
+
   /// A list of pending messages which are buffered awaiting for being sent.
   sdn::MessageList m_queuedMessages;
   Timer m_queuedMessagesTimer; // timer for throttling outgoing messages
@@ -200,7 +203,9 @@ private:
   void SendRoutingMessage (); //Fullfilled
 
   void ProcessRm (const sdn::MessageHeader &msg);//implemented
-  void ProcessHM (const sdn::MessageHeader &msg); //Fullfilled
+  void ProcessHM (const sdn::MessageHeader &msg); //implemented
+
+  void ComputeRoute ();//
 
   /// Check that address is one of my interfaces
   bool IsMyOwnAddress (const Ipv4Address & a) const;//implemented

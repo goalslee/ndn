@@ -102,7 +102,7 @@ void SumoMobility::Install()
 		}
 		//Add a final position(-10000,-10000,-10000)
 		waypointmodel->AddWaypoint(Waypoint(Seconds(end_time+0.1),Vector(-10000.0,-10000.0,-10000.0)));
-		std::cout<<"Waypoints for car no."<<CarNumber<<"set."<<std::endl;
+		std::cout<<"Waypoints for car no."<<CarNumber<<" are set."<<std::endl;
 		CarNumber++;
 	}
 

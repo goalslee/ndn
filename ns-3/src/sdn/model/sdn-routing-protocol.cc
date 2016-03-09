@@ -103,8 +103,10 @@ RoutingProtocol::RoutingProtocol ()
     m_packetSequenceNumber (SDN_MAX_SEQ_NUM),
     m_messageSequenceNumber (SDN_MAX_SEQ_NUM),
     m_helloInterval (Seconds(1)),
+    m_rmInterval (Seconds (2)),
     m_ipv4 (0),
     m_helloTimer (Timer::CANCEL_ON_DESTROY),
+    m_rmTimer (Timer::CANCEL_ON_DESTROY),
     m_queuedMessagesTimer (Timer::CANCEL_ON_DESTROY),
     m_nodetype (OTHERS)
 {
@@ -126,6 +128,8 @@ RoutingProtocol::SetIpv4 (Ptr<Ipv4> ipv4)
     (&RoutingProtocol::HelloTimerExpire, this);
   m_queuedMessagesTimer.SetFunction 
     (&RoutingProtocol::SendQueuedMessages, this);
+  m_rmTimer.SetFunction
+    (&RoutingProtocol::RmTimerExpire, this);
 
   m_packetSequenceNumber = SDN_MAX_SEQ_NUM;
   m_messageSequenceNumber = SDN_MAX_SEQ_NUM;
@@ -298,6 +302,7 @@ RoutingProtocol::DoInitialize ()
   if(canRunSdn)
     {
       HelloTimerExpire ();
+      RmTimerExpire ();
       NS_LOG_DEBUG ("SDN on node (Car) " << m_mainAddress << " started");
     }
 }
@@ -752,6 +757,21 @@ RoutingProtocol::HelloTimerExpire ()
     }
 }
 
+void
+RoutingProtocol::RmTimerExpire ()
+{
+  std::cout<<"RmTimerExpire "<<m_mainAddress.Get ()%256;
+  std::cout<<", Time:"<<Simulator::Now().GetSeconds ()<<std::endl;
+
+  if (GetType () == LOCAL_CONTROLLER)
+    {
+      ComputeRoute ();
+      //SendRoutingMessage ();
+      m_rmTimer.Schedule (m_rmInterval);
+    }
+}
+
+
 
 // SDN packets actually send here.
 void
@@ -933,16 +953,39 @@ RoutingProtocol::ProcessHM (const sdn::MessageHeader &msg)
       CI_temp.Velocity = msg.GetHello ().GetVelocity ();
       m_lc_info[ID] = CI_temp;
     }
-
+/*
   std::cout<<m_lc_info[ID].Position.x<<","
            <<m_lc_info[ID].Position.y<<","
            <<m_lc_info[ID].Position.z<<","
            <<m_lc_info[ID].Velocity.x<<","
            <<m_lc_info[ID].Velocity.y<<","
            <<m_lc_info[ID].Velocity.z<<std::endl;
-
+*/
 }
 
+void
+RoutingProtocol::ComputeRoute ()
+{
+  //Remove Timeout Tuples first.
+  Time now = Simulator::Now ();
+  std::map<Ipv4Address, CarInfo>::iterator it = m_lc_info.begin ();
+  std::vector<Ipv4Address> pendding;
+  while (it != m_lc_info.end ())
+    {
+      if (now.GetSeconds() - it->second.LastActive.GetSeconds () > 3 * m_helloInterval.GetSeconds())
+        {
+          pendding.push_back (it->first);
+        }
+      it++;
+    }
+  for (std::vector<Ipv4Address>::iterator it = pendding.begin ();
+      it != pendding.end(); it++)
+    {
+      m_lc_info.erase((*it));
+    }
+  //End of Removing
+
+}
 
 
 } // namespace sdn
