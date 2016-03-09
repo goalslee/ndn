@@ -26,6 +26,7 @@
 #include "ns3/header.h"
 #include "ns3/ipv4-address.h"
 #include "ns3/nstime.h"
+#include "ns3/vector.h"
 
 namespace ns3 {
 namespace sdn {
@@ -238,6 +239,13 @@ public:
       z = rIEEE754(this->position.Z);
     }
     
+    Vector3D GetPosition() const
+    {
+      return Vector3D(rIEEE754(this->position.X),
+                      rIEEE754(this->position.Y),
+                      rIEEE754(this->position.Z));
+    }
+
     Velocity velocity;
     void SetVelocity(double x, double y, double z)
     {
@@ -253,6 +261,13 @@ public:
       z = rIEEE754(this->velocity.Z);
     }
     
+    Vector3D GetVelocity() const
+    {
+      return Vector3D(rIEEE754(this->velocity.X),
+                      rIEEE754(this->velocity.Y),
+                      rIEEE754(this->velocity.Z));
+    }
+
     void Print (std::ostream &os) const;
     uint32_t GetSerializedSize (void) const;
     void Serialize (Buffer::Iterator start) const;

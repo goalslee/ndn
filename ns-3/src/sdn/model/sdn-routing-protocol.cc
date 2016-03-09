@@ -905,13 +905,42 @@ RoutingProtocol::GetType () const
 void
 RoutingProtocol::SendRoutingMessage ()
 {
+  std::cout<<"RoutingProtocol::SendRoutingMessage"<<std::endl;
   // \TODO
 }
 
 void
 RoutingProtocol::ProcessHM (const sdn::MessageHeader &msg)
 {
-  // \TODO
+  std::cout<<m_mainAddress.Get ()%256<<" RoutingProtocol::ProcessHM "<<msg.GetHello ().ID.Get ()%256<<" m_lc_info size:"<<m_lc_info.size ()<<std::endl;
+
+  Ipv4Address ID = msg.GetHello ().ID;
+  std::map<Ipv4Address, CarInfo>::iterator it = m_lc_info.find (ID);
+
+  if (it != m_lc_info.end ())
+    {
+      it->second.Active = true;
+      it->second.LastActive = Simulator::Now ();
+      it->second.Position = msg.GetHello ().GetPosition ();
+      it->second.Velocity = msg.GetHello ().GetVelocity ();
+    }
+  else
+    {
+      CarInfo CI_temp;
+      CI_temp.Active = true;
+      CI_temp.LastActive = Simulator::Now ();
+      CI_temp.Position = msg.GetHello ().GetPosition ();
+      CI_temp.Velocity = msg.GetHello ().GetVelocity ();
+      m_lc_info[ID] = CI_temp;
+    }
+
+  std::cout<<m_lc_info[ID].Position.x<<","
+           <<m_lc_info[ID].Position.y<<","
+           <<m_lc_info[ID].Position.z<<","
+           <<m_lc_info[ID].Velocity.x<<","
+           <<m_lc_info[ID].Velocity.y<<","
+           <<m_lc_info[ID].Velocity.z<<std::endl;
+
 }
 
 
