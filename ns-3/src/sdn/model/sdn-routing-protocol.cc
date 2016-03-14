@@ -83,7 +83,7 @@
 
 #define ROAD_LENGTH 1000
 #define SIGNAL_RANGE 100
-
+#define INFHOP 2147483647
 
 namespace ns3 {
 namespace sdn {
@@ -1010,7 +1010,7 @@ RoutingProtocol::ComputeRoute ()
       //Step1  Fen Qu
       for (std::map<Ipv4Address, CarInfo>::iterator it = m_lc_info.begin (); it!=m_lc_info.end(); ++it)
         {
-          int pos = it->second.Position.x / SIGNAL_RANGE;
+          int pos = it->second.GetPos ().x / SIGNAL_RANGE;
           m_Sections[pos].insert (it->first);
         }
 
@@ -1035,7 +1035,7 @@ RoutingProtocol::ComputeRoute ()
               for (std::list<Ipv4Address>::iterator it = list4sort.begin ();
                    it != list4sort.end (); ++it)
                 {
-                  if (m_lc_info[*it].Position.x < m_lc_info[*cit].Position.x)
+                  if (m_lc_info[*it].GetPos ().x < m_lc_info[*cit].GetPos ().x)
                     {
                       list4sort.insert (it, *cit);
                       done = true;
@@ -1056,23 +1056,69 @@ RoutingProtocol::ComputeRoute ()
                    cit2 != m_Sections[i+1].end (); ++cit2)
                 {
                   double vxa = m_lc_info[*cit].Velocity.x,
-                         vxb = m_lc_info[*cit2].Velocity.x,
-                         pxa = m_lc_info[*cit].Position.x,
-                         pxb = m_lc_info[*cit2].Position.x;
+                         vxb = m_lc_info[*cit2].Velocity.x;
+                  //Predict
+                  double pxa = m_lc_info[*cit].GetPos ().x,
+                         pxb = m_lc_info[*cit2].GetPos ().x;
                   // time to b left
                   double t2bl = (((pxb / SIGNAL_RANGE + 1)*SIGNAL_RANGE) - pxb) / vxb;
-                  if ((pxb - pxa < SIGNAL_RANGE) && (abs((pxb + vxb*t2bl)-(pxa + vxa*t2bl)) < SIGNAL_RANGE))
+                  if ((pxb - pxa > SIGNAL_RANGE) && (abs((pxb + vxb*t2bl)-(pxa + vxa*t2bl)) > SIGNAL_RANGE))
                     {
                       ShortHop sh;
                       sh.nextID = *cit2;
-                      //TODO
+                      sh.hopnumber = m_lc_info[*cit2].minhop + 1;
+                      sh.isTransfer = false;
                       lc_minhop[*cit].push_back(sh);
-                    }
-                }
-            }
-        }
+                    }//if ((pxb -  ...
+                  else
+                    {
+                      ShortHop sh;
+                      sh.isTransfer = true;
+                      sh.t = 0;
+                      sh.hopnumber = INFHOP;
+                      if (abs((pxb + vxb*t2bl)-(pxa + vxa*t2bl)) > SIGNAL_RANGE)
+                        {
+                          if (vxb > vxa)
+                            {
+                              sh.t = (SIGNAL_RANGE + pxa - pxb) / (vxb - vxa);
+                            }
+                          else
+                            {
+                              sh.t = (SIGNAL_RANGE + pxb - pxa) / (vxa - vxb);
+                            }
+                        }
+                      //Find another car
+                      for (std::map<Ipv4Address, CarInfo>::const_iterator cit3 = m_lc_info.begin ();
+                           cit3 != m_lc_info; ++cit3)
+                        {
+                          double vxc = cit3->second.Velocity.x;
+                          //pxc when t
+                          double tpxc = cit3->second.GetPos ().x + vxc * sh.t;
+                          //pxa and pxb when t
+                          double tpxa = pxa + vxa * sh.t,
+                                 tpxb = pxb + vxb * sh.t;
+                          //t2bl minus t
+                          double t2blmt = t2bl - t;
+                          if ((tpxa<tpxc)&&(tpxc<tpxb))
+                            {
+                              if ((abs((tpxb + vxb*t2blmt)-(tpxc + vxc*t2blmt)) < SIGNAL_RANGE)&&
+                                  abs((tpxc + vxc*t2blmt)-(tpxa + vxa*t2blmt)) < SIGNAL_RANGE)
+                                {
+                                  sh.IDa = *cit;
+                                  sh.IDb = *cit2;
+                                  sh.ID = *cit3;
+                                  sh.hopnumber = m_lc_info[*cit2].minhop + 2;
+                                  break;
+                                }//if ((abs((tpxb ...
+                            }//if ((tpxa ...
+                        }//for (std::map<I ...
 
-    }
+                    }//else
+                }//for (std::set ...
+            }//for (std::list ...
+        }//for (int i = num ...
+
+    }//if (m_Sections.empty ()) ...
 
 
 
