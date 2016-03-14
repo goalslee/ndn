@@ -47,6 +47,8 @@
 #include "ns3/trace-source-accessor.h"
 #include "ns3/ipv4-header.h"
 
+#include "stdlib.h" //ABS
+
 /********** Useful macros **********/
 
 ///
@@ -77,6 +79,11 @@
 #define SDN_PORT_NUMBER 419
 /// Maximum number of messages per packet.
 #define SDN_MAX_MSGS    64
+
+
+#define ROAD_LENGTH 1000
+#define SIGNAL_RANGE 100
+
 
 namespace ns3 {
 namespace sdn {
@@ -144,7 +151,7 @@ void RoutingProtocol::DoDispose ()
 
   for (std::map< Ptr<Socket>, Ipv4InterfaceAddress >::iterator iter = 
        m_socketAddresses.begin ();
-       iter != m_socketAddresses.end (); iter++)
+       iter != m_socketAddresses.end (); ++iter)
     {
       iter->first->Close ();
     }
@@ -162,7 +169,7 @@ RoutingProtocol::PrintRoutingTable (Ptr<OutputStreamWrapper> stream) const
 
   for (std::map<Ipv4Address, RoutingTableEntry>::const_iterator iter = 
        m_table.begin ();
-       iter != m_table.end (); iter++)
+       iter != m_table.end (); ++iter)
     {
       *os << iter->first << "\t\t";
       *os << iter->second.mask << "\t\t";
@@ -189,7 +196,7 @@ RoutingProtocol::DoInitialize ()
       Ipv4Address loopback ("127.0.0.1");
       uint32_t count = 0;
       //std::cout<<m_ipv4->GetNInterfaces ()<<std::endl;
-      for (uint32_t i = 0; i < m_ipv4->GetNInterfaces (); i++)
+      for (uint32_t i = 0; i < m_ipv4->GetNInterfaces (); ++i)
         {
           // CAR Use first address as ID
           // LC Use secend address as ID
@@ -232,7 +239,7 @@ RoutingProtocol::DoInitialize ()
                         m_mainAddress = addr;
                         break;
                       }
-                    count++;
+                    ++count;
                   }
             }
         }
@@ -256,7 +263,7 @@ RoutingProtocol::DoInitialize ()
   Ipv4Address loopback ("127.0.0.1");
 
   bool canRunSdn = false;
-  for (uint32_t i = 0; i < m_ipv4->GetNInterfaces (); i++)
+  for (uint32_t i = 0; i < m_ipv4->GetNInterfaces (); ++i)
     {
       Ipv4Address addr = m_ipv4->GetAddress (i, 0).GetLocal ();
       if (addr == loopback)
@@ -370,7 +377,7 @@ RoutingProtocol::RecvSDN (Ptr<Socket> socket)
   m_rxPacketTrace (sdnPacketHeader, messages);
   
   for (MessageList::const_iterator messageIter = messages.begin ();
-       messageIter != messages.end (); messageIter++)
+       messageIter != messages.end (); ++messageIter)
     {
       const MessageHeader &messageHeader = *messageIter;
       // If ttl is less than or equal to zero, or
@@ -438,7 +445,7 @@ RoutingProtocol::ProcessRm (const sdn::MessageHeader &msg)
 
       for (std::vector<sdn::MessageHeader::Rm::Routing_Tuple>::const_iterator it = rm.routingTables.begin();
             it != rm.routingTables.end();
-            it++)
+            ++it)
       {
 
         AddEntry(it->destAddress,
@@ -482,7 +489,7 @@ RoutingProtocol::AddEntry (const Ipv4Address &dest,
   NS_ASSERT (m_ipv4);
 
   for (uint32_t i = 0; i < m_ipv4->GetNInterfaces(); ++i)
-   for (uint32_t j = 0; j< m_ipv4->GetNAddresses(i); j++)
+   for (uint32_t j = 0; j< m_ipv4->GetNAddresses(i); ++j)
      {
        if (m_ipv4->GetAddress(i,j).GetLocal() == interfaceAddress)
          {
@@ -511,7 +518,7 @@ RoutingProtocol::Lookup(Ipv4Address const &dest,
       Ipv4Mask MaskTemp;
       uint16_t max_prefix;
       bool max_prefix_meaningful = false;
-      for (it = m_table.begin();it!=m_table.end(); it++)
+      for (it = m_table.begin();it!=m_table.end(); ++it)
         {
           MaskTemp.Set (it->second.mask.Get ());
           if (MaskTemp.IsMatch (dest, it->second.destAddr))
@@ -714,7 +721,7 @@ RoutingProtocol::GetRoutingTableEntries () const
 {
   std::vector<RoutingTableEntry> rtvt;
   for (std::map<Ipv4Address, RoutingTableEntry>::const_iterator it = m_table.begin ();
-       it != m_table.end (); it++)
+       it != m_table.end (); ++it)
     {
       rtvt.push_back (it->second);
     }
@@ -792,7 +799,7 @@ RoutingProtocol::SendPacket (Ptr<Packet> packet,
 
   // Send it
   for (std::map<Ptr<Socket>, Ipv4InterfaceAddress>::const_iterator i =
-         m_socketAddresses.begin (); i != m_socketAddresses.end (); i++)
+         m_socketAddresses.begin (); i != m_socketAddresses.end (); ++i)
     {
       Ipv4Address bcast = i->second.GetLocal ().GetSubnetDirectedBroadcast (i->second.GetMask ());
       i->first->SendTo (packet, 0, InetSocketAddress (bcast, SDN_PORT_NUMBER));
@@ -827,7 +834,7 @@ RoutingProtocol::SendQueuedMessages ()
 
   for (std::vector<sdn::MessageHeader>::const_iterator message = m_queuedMessages.begin ();
        message != m_queuedMessages.end ();
-       message++)
+       ++message)
     {
       Ptr<Packet> p = Create<Packet> ();
       p->AddHeader (*message);
@@ -943,6 +950,7 @@ RoutingProtocol::ProcessHM (const sdn::MessageHeader &msg)
       it->second.LastActive = Simulator::Now ();
       it->second.Position = msg.GetHello ().GetPosition ();
       it->second.Velocity = msg.GetHello ().GetVelocity ();
+      it->second.minhop = 0;
     }
   else
     {
@@ -963,6 +971,7 @@ RoutingProtocol::ProcessHM (const sdn::MessageHeader &msg)
 */
 }
 
+
 void
 RoutingProtocol::ComputeRoute ()
 {
@@ -976,14 +985,98 @@ RoutingProtocol::ComputeRoute ()
         {
           pendding.push_back (it->first);
         }
-      it++;
+      ++it;
     }
   for (std::vector<Ipv4Address>::iterator it = pendding.begin ();
-      it != pendding.end(); it++)
+      it != pendding.end(); ++it)
     {
       m_lc_info.erase((*it));
     }
   //End of Removing
+
+  int numArea = ROAD_LENGTH / SIGNAL_RANGE;
+  if (ROAD_LENGTH % SIGNAL_RANGE)
+    {
+      ++numArea;
+    }
+
+  if (m_Sections.empty ())// Do Init
+    {
+      for (int i = 0;i<numArea;++i)
+        {
+          m_Sections.push_back (std::set<Ipv4Address> ());
+        }
+
+      //Step1  Fen Qu
+      for (std::map<Ipv4Address, CarInfo>::iterator it = m_lc_info.begin (); it!=m_lc_info.end(); ++it)
+        {
+          int pos = it->second.Position.x / SIGNAL_RANGE;
+          m_Sections[pos].insert (it->first);
+        }
+
+      //Step2 jisuan Set n
+      for (std::set<Ipv4Address>::const_iterator cit = m_Sections[numArea-1].begin ();
+          cit != m_Sections[numArea-1].end (); ++cit)
+        {
+          m_lc_info[(*cit)].minhop = 1;
+        }
+
+      //Step3
+      //hold all info
+      std::map<Ipv4Address, std::list<ShortHop> > lc_minhop;
+      for (int i = numArea-2; i>=0 ; --i)
+        {
+          //sort
+          std::list<Ipv4Address> list4sort;
+          for (std::set<Ipv4Address>::const_iterator cit = m_Sections[i].begin ();
+              cit != m_Sections[i].end (); ++cit)
+            {
+              bool done = false;
+              for (std::list<Ipv4Address>::iterator it = list4sort.begin ();
+                   it != list4sort.end (); ++it)
+                {
+                  if (m_lc_info[*it].Position.x < m_lc_info[*cit].Position.x)
+                    {
+                      list4sort.insert (it, *cit);
+                      done = true;
+                      break;
+                    }
+                }
+              if (!done)
+                {
+                  list4sort.push_back (*cit);
+                }
+            }
+
+
+          for (std::list<Ipv4Address>::const_iterator cit = list4sort.begin ();
+               cit != list4sort.end (); ++cit)
+            {
+              for (std::set<Ipv4Address>::const_iterator cit2 = m_Sections[i+1].begin ();
+                   cit2 != m_Sections[i+1].end (); ++cit2)
+                {
+                  double vxa = m_lc_info[*cit].Velocity.x,
+                         vxb = m_lc_info[*cit2].Velocity.x,
+                         pxa = m_lc_info[*cit].Position.x,
+                         pxb = m_lc_info[*cit2].Position.x;
+                  // time to b left
+                  double t2bl = (((pxb / SIGNAL_RANGE + 1)*SIGNAL_RANGE) - pxb) / vxb;
+                  if ((pxb - pxa < SIGNAL_RANGE) && (abs((pxb + vxb*t2bl)-(pxa + vxa*t2bl)) < SIGNAL_RANGE))
+                    {
+                      ShortHop sh;
+                      sh.nextID = *cit2;
+                      //TODO
+                      lc_minhop[*cit].push_back(sh);
+                    }
+                }
+            }
+        }
+
+    }
+
+
+
+
 
 }
 

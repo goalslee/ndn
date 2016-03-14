@@ -66,6 +66,24 @@ struct CarInfo
   Time LastActive;//Timeout indicator
   bool Active;
   std::vector<RoutingTableEntry> R_Table;
+  uint32_t minhop;
+};
+
+struct ShortHop
+{
+  Ipv4Address nextID;
+  uint32_t hopnumber;
+  bool isTransfer;
+  Ipv4Address IDa, IDb, ID;
+  Time t;
+};
+
+struct ShortHopComp
+{
+  bool operator() (const ShortHop& lhs, const ShortHop& rhs) const
+  {
+    return lhs<rhs;
+  }
 };
 
 class RoutingProtocol;
@@ -238,6 +256,8 @@ public:
   void SetType(NodeType nt); //implemented
   NodeType GetType() const; //implemented
 
+private:
+  std::vector< std::set<Ipv4Address> > m_Sections;
 
 };
 
