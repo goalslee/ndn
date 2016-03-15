@@ -1008,6 +1008,7 @@ RoutingProtocol::ComputeRoute ()
         }
 
       //Step1  Fen Qu
+      //Area Start from 0.<<<<<<<<<<<<<<<<<<<<<
       for (std::map<Ipv4Address, CarInfo>::iterator it = m_lc_info.begin (); it!=m_lc_info.end(); ++it)
         {
           int pos = it->second.GetPos ().x / SIGNAL_RANGE;
@@ -1019,11 +1020,12 @@ RoutingProtocol::ComputeRoute ()
           cit != m_Sections[numArea-1].end (); ++cit)
         {
           m_lc_info[(*cit)].minhop = 1;
+          m_lc_info[(*cit)].ID_of_minhop = Ipv4Address::GetZero ();
         }
 
       //Step3
       //hold all info
-      std::map<Ipv4Address, std::list<ShortHop> > lc_minhop;
+      std::map<Ipv4Address, std::list<ShortHop> > lc_shorthop;
       for (int i = numArea-2; i>=0 ; --i)
         {
           //sort
@@ -1055,76 +1057,128 @@ RoutingProtocol::ComputeRoute ()
               for (std::set<Ipv4Address>::const_iterator cit2 = m_Sections[i+1].begin ();
                    cit2 != m_Sections[i+1].end (); ++cit2)
                 {
-                  double vxa = m_lc_info[*cit].Velocity.x,
-                         vxb = m_lc_info[*cit2].Velocity.x;
-                  //Predict
-                  double pxa = m_lc_info[*cit].GetPos ().x,
-                         pxb = m_lc_info[*cit2].GetPos ().x;
-                  // time to b left
-                  double t2bl = (((pxb / SIGNAL_RANGE + 1)*SIGNAL_RANGE) - pxb) / vxb;
-                  if ((pxb - pxa > SIGNAL_RANGE) && (abs((pxb + vxb*t2bl)-(pxa + vxa*t2bl)) > SIGNAL_RANGE))
+                  lc_shorthop[*cit].push_back (GetShortHop (*cit,*cit2));
+                }//for (std::set ...
+
+              //minhop = min(shorthop)
+              uint32_t theminhop = INFHOP;
+              Ipv4Address IDofminhop;
+              for (std::list<ShortHop>::const_iterator cit2 = lc_shorthop[*cit].begin ();
+                   cit2 != lc_shorthop[*cit].end (); ++cit2)
+                {
+                  if (cit2->hopnumber < theminhop)
                     {
-                      ShortHop sh;
-                      sh.nextID = *cit2;
-                      sh.hopnumber = m_lc_info[*cit2].minhop + 1;
-                      sh.isTransfer = false;
-                      lc_minhop[*cit].push_back(sh);
-                    }//if ((pxb -  ...
-                  else
-                    {
-                      ShortHop sh;
-                      sh.isTransfer = true;
-                      sh.t = 0;
-                      sh.hopnumber = INFHOP;
-                      if (abs((pxb + vxb*t2bl)-(pxa + vxa*t2bl)) > SIGNAL_RANGE)
+                      theminhop = cit2->hopnumber;
+                      if (cit2->isTransfer)
                         {
-                          if (vxb > vxa)
+                          IDofminhop = cit2->IDb;
+                        }
+                      else
+                        {
+                          IDofminhop = cit2->nextID;
+                        }
+                    }
+                }
+              m_lc_info[*cit].ID_of_minhop = IDofminhop;
+              m_lc_info[*cit].minhop = theminhop;
+            }//for (std::list ...
+          //intra-area
+          for (std::set<Ipv4Address>::const_iterator cit = m_Sections[i].begin ();
+              cit != m_Sections[i].end (); ++cit)
+            {
+              CarInfo& carinfo_temp = m_lc_info[*cit];//efficiency
+              for (std::set<Ipv4Address>::const_iterator cit2 = m_Sections[i].begin ();
+                   cit2 != m_Sections[i].end (); ++cit2)
+                {
+                  if (m_lc_info[*cit2].minhop < carinfo_temp.minhop)
+                    {
+                      ShortHop sh = GetShortHop (*cit, *cit2);
+                      lc_shorthop[*cit].push_back (sh);
+                      if (sh.hopnumber < carinfo_temp.minhop)
+                        {
+                          carinfo_temp.minhop = sh.hopnumber;
+                          if (sh.isTransfer)
                             {
-                              sh.t = (SIGNAL_RANGE + pxa - pxb) / (vxb - vxa);
+                              carinfo_temp.ID_of_minhop = sh.IDb;
                             }
                           else
                             {
-                              sh.t = (SIGNAL_RANGE + pxb - pxa) / (vxa - vxb);
+                              carinfo_temp.ID_of_minhop = sh.nextID;
                             }
                         }
-                      //Find another car
-                      for (std::map<Ipv4Address, CarInfo>::const_iterator cit3 = m_lc_info.begin ();
-                           cit3 != m_lc_info; ++cit3)
-                        {
-                          double vxc = cit3->second.Velocity.x;
-                          //pxc when t
-                          double tpxc = cit3->second.GetPos ().x + vxc * sh.t;
-                          //pxa and pxb when t
-                          double tpxa = pxa + vxa * sh.t,
-                                 tpxb = pxb + vxb * sh.t;
-                          //t2bl minus t
-                          double t2blmt = t2bl - t;
-                          if ((tpxa<tpxc)&&(tpxc<tpxb))
-                            {
-                              if ((abs((tpxb + vxb*t2blmt)-(tpxc + vxc*t2blmt)) < SIGNAL_RANGE)&&
-                                  abs((tpxc + vxc*t2blmt)-(tpxa + vxa*t2blmt)) < SIGNAL_RANGE)
-                                {
-                                  sh.IDa = *cit;
-                                  sh.IDb = *cit2;
-                                  sh.ID = *cit3;
-                                  sh.hopnumber = m_lc_info[*cit2].minhop + 2;
-                                  break;
-                                }//if ((abs((tpxb ...
-                            }//if ((tpxa ...
-                        }//for (std::map<I ...
-
-                    }//else
-                }//for (std::set ...
-            }//for (std::list ...
+                    }
+                }//for (std::set<Ipv4Address> ...
+            }//for (std::set<Ip ...
         }//for (int i = num ...
 
     }//if (m_Sections.empty ()) ...
 
+}//RoutingProtocol::ComputeRoute
 
-
-
-
+ShortHop
+RoutingProtocol::GetShortHop(Ipv4Address IDa, Ipv4Address IDb)
+{
+  double vxa = m_lc_info[IDa].Velocity.x,
+         vxb = m_lc_info[IDb].Velocity.x;
+  //Predict
+  double pxa = m_lc_info[IDa].GetPos ().x,
+         pxb = m_lc_info[IDb].GetPos ().x;
+  // time to b left
+  double t2bl = (((pxb / SIGNAL_RANGE + 1)*SIGNAL_RANGE) - pxb) / vxb;
+  if ((pxb - pxa < SIGNAL_RANGE) && (abs((pxb + vxb*t2bl)-(pxa + vxa*t2bl)) < SIGNAL_RANGE))
+    {
+      ShortHop sh;
+      sh.nextID = IDb;
+      sh.hopnumber = m_lc_info[IDb].minhop + 1;
+      sh.isTransfer = false;
+      return sh;
+    }//if ((pxb -  ...
+  else
+    {
+      ShortHop sh;
+      sh.isTransfer = true;
+      sh.t = 0;
+      sh.hopnumber = INFHOP;
+      if (pxb - pxa < SIGNAL_RANGE)
+        {
+          if (vxb > vxa)
+            {
+              sh.t = (SIGNAL_RANGE + pxa - pxb) / (vxb - vxa);
+            }
+          else
+            {
+              sh.t = (SIGNAL_RANGE + pxb - pxa) / (vxa - vxb);
+            }
+        }
+      //Find another car
+      for (std::map<Ipv4Address, CarInfo>::const_iterator cit = m_lc_info.begin ();
+           cit != m_lc_info.end (); ++cit)
+        {
+          double vxc = cit->second.Velocity.x;
+          //pxc when t
+          double tpxc = cit->second.GetPos ().x + vxc * sh.t;
+          //pxa and pxb when t
+          double tpxa = pxa + vxa * sh.t,
+                 tpxb = pxb + vxb * sh.t;
+          //t2bl minus t
+          double t2blmt = t2bl - sh.t;
+          if ((tpxa<tpxc)&&(tpxc<tpxb))
+            {
+              if ((abs((tpxb + vxb*t2blmt)-(tpxc + vxc*t2blmt)) < SIGNAL_RANGE)&&
+                  abs((tpxc + vxc*t2blmt)-(tpxa + vxa*t2blmt)) < SIGNAL_RANGE)
+                {
+                  sh.IDa = IDa;
+                  sh.IDb = IDb;
+                  sh.ID = cit->first;
+                  sh.hopnumber = m_lc_info[IDb].minhop + 2;
+                  return sh;
+                }//if ((abs((tpxb ...
+            }//if ((tpxa ...
+        }//for (std::map<I ...
+      return sh;
+    }//else
 }
+
 
 
 } // namespace sdn
