@@ -1050,7 +1050,7 @@ RoutingProtocol::ComputeRoute ()
                 }
             }
 
-
+          //inter-area
           for (std::list<Ipv4Address>::const_iterator cit = list4sort.begin ();
                cit != list4sort.end (); ++cit)
             {
@@ -1082,6 +1082,7 @@ RoutingProtocol::ComputeRoute ()
               m_lc_info[*cit].ID_of_minhop = IDofminhop;
               m_lc_info[*cit].minhop = theminhop;
             }//for (std::list ...
+
           //intra-area
           for (std::set<Ipv4Address>::const_iterator cit = m_Sections[i].begin ();
               cit != m_Sections[i].end (); ++cit)
@@ -1108,8 +1109,52 @@ RoutingProtocol::ComputeRoute ()
                         }
                     }
                 }//for (std::set<Ipv4Address> ...
-            }//for (std::set<Ip ...
-        }//for (int i = num ...
+            }//intra-area  for (std::set<Ip ...
+        }//Step3 for (int i = num ...
+
+
+      //Step 4
+      //4-1
+      Ipv4Address The_Car;
+      uint32_t minhop_of_tc = INFHOP;
+      for (std::set<Ipv4Address>::const_iterator cit = m_Sections[0].begin ();
+          cit != m_Sections[0].end (); ++cit)
+        {
+          CarInfo& temp_info = m_lc_info[*cit];
+          if (temp_info.minhop < minhop_of_tc)
+            {
+              minhop_of_tc = temp_info.minhop;
+              The_Car = *cit;
+            }
+        }
+
+      //4-2
+      Ipv4Address allzero = Ipv4Address::GetZero ();
+      Ipv4Address allone = Ipv4Address::GetBroadcast ();
+      std::set<Ipv4Address> Backward;
+      Ipv4Address LastCar;
+      for (int i = 0;i<numArea;++i)
+        {
+          // Default Route, Going Forward
+          LCAddEntry(The_Car, allzero, allzero, m_lc_info[The_Car].ID_of_minhop);
+          for (std::set<Ipv4Address>::const_iterator cit = Backward.begin ();
+               cit != Backward.end (); ++cit)
+            {
+
+            }
+
+          for (std::set<Ipv4Address>::const_iterator cit = m_Sections[i].begin ();
+               cit != m_Sections[i].end (); ++cit)
+            {
+              if (*cit != The_Car)
+                {
+                  LCAddEntry(*cit, allzero, allzero, The_Car);
+                  LCAddEntry(The_Car, *cit, allone, *cit);
+                }
+            }
+          The_Car = m_lc_info[The_Car].ID_of_minhop;
+        }
+
 
     }//if (m_Sections.empty ()) ...
 
