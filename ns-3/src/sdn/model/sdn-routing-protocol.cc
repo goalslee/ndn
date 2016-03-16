@@ -774,7 +774,7 @@ RoutingProtocol::RmTimerExpire ()
     {
       ComputeRoute ();
       //SendRoutingMessage ();
-      m_rmTimer.Schedule (m_rmInterval);
+      //m_rmTimer.Schedule (m_rmInterval);
     }
 }
 
@@ -1000,7 +1000,9 @@ RoutingProtocol::ComputeRoute ()
       ++numArea;
     }
 
-  if (m_Sections.empty ())// Do Init
+  Ipv4Address vinSet0;
+
+  if (1)//(m_Sections.empty ())// Do Init
     {
       for (int i = 0;i<numArea;++i)
         {
@@ -1135,7 +1137,7 @@ RoutingProtocol::ComputeRoute ()
       Ipv4Address LastCar;
 
       ClearAllTables ();
-
+      vinSet0 = The_Car;
       for (int i = 0;i<numArea;++i)
         {
           // Default Route, Going Forward
@@ -1160,9 +1162,28 @@ RoutingProtocol::ComputeRoute ()
           LastCar = The_Car;
           The_Car = m_lc_info[The_Car].ID_of_minhop;
         }
-
-
     }//if (m_Sections.empty ()) ...
+  else
+    {
+
+    }
+
+  double vx = m_lc_info[vinSet0].Velocity.x;
+  double px = m_lc_info[vinSet0].GetPos ().x;
+  double t2l;
+  if (vx == 0)
+    {
+      t2l = 1;
+    }
+  else
+    {
+      t2l= (((px / SIGNAL_RANGE + 1)*SIGNAL_RANGE) - px) / vx;
+      std::cout<<"vx,px,t2l"<<vx<<","<<px<<","<<t2l<<std::endl;
+      if (t2l < 0.5)
+        t2l = 0.5;
+    }
+  std::cout<<"m_rmTimer.Schedule(Seconds(t2l)), t2l?"<<t2l<<std::endl;
+  m_rmTimer.Schedule(Seconds(t2l));
 
 }//RoutingProtocol::ComputeRoute
 
