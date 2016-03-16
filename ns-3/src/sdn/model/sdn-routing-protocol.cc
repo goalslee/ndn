@@ -1009,10 +1009,10 @@ RoutingProtocol::ComputeRoute ()
 
       //Step1  Fen Qu
       //Area Start from 0.<<<<<<<<<<<<<<<<<<<<<
-      for (std::map<Ipv4Address, CarInfo>::iterator it = m_lc_info.begin (); it!=m_lc_info.end(); ++it)
+      for (std::map<Ipv4Address, CarInfo>::const_iterator cit = m_lc_info.begin (); cit!=m_lc_info.end(); ++cit)
         {
-          int pos = it->second.GetPos ().x / SIGNAL_RANGE;
-          m_Sections[pos].insert (it->first);
+          int pos = cit->second.GetPos ().x / SIGNAL_RANGE;
+          m_Sections[pos].insert (cit->first);
         }
 
       //Step2 jisuan Set n
@@ -1133,14 +1133,17 @@ RoutingProtocol::ComputeRoute ()
       Ipv4Address allone = Ipv4Address::GetBroadcast ();
       std::set<Ipv4Address> Backward;
       Ipv4Address LastCar;
+
+      ClearAllTables ();
+
       for (int i = 0;i<numArea;++i)
         {
           // Default Route, Going Forward
-          LCAddEntry(The_Car, allzero, allzero, m_lc_info[The_Car].ID_of_minhop);
+          LCAddEntry (The_Car, allzero, allzero, m_lc_info[The_Car].ID_of_minhop);
           for (std::set<Ipv4Address>::const_iterator cit = Backward.begin ();
                cit != Backward.end (); ++cit)
             {
-
+              LCAddEntry (The_Car, *cit, allone, LastCar);
             }
 
           for (std::set<Ipv4Address>::const_iterator cit = m_Sections[i].begin ();
@@ -1148,10 +1151,13 @@ RoutingProtocol::ComputeRoute ()
             {
               if (*cit != The_Car)
                 {
-                  LCAddEntry(*cit, allzero, allzero, The_Car);
-                  LCAddEntry(The_Car, *cit, allone, *cit);
+                  LCAddEntry (*cit, allzero, allzero, The_Car);
+                  LCAddEntry (The_Car, *cit, allone, *cit);
                 }
+                Backward.insert (*cit);
             }
+          //Move to the next v
+          LastCar = The_Car;
           The_Car = m_lc_info[The_Car].ID_of_minhop;
         }
 
@@ -1161,7 +1167,7 @@ RoutingProtocol::ComputeRoute ()
 }//RoutingProtocol::ComputeRoute
 
 ShortHop
-RoutingProtocol::GetShortHop(Ipv4Address IDa, Ipv4Address IDb)
+RoutingProtocol::GetShortHop(const Ipv4Address& IDa, const Ipv4Address& IDb)
 {
   double vxa = m_lc_info[IDa].Velocity.x,
          vxb = m_lc_info[IDb].Velocity.x;
@@ -1224,6 +1230,28 @@ RoutingProtocol::GetShortHop(Ipv4Address IDa, Ipv4Address IDb)
     }//else
 }
 
+void
+RoutingProtocol::LCAddEntry(const Ipv4Address& ID,
+                            const Ipv4Address& dest,
+                            const Ipv4Address& mask,
+                            const Ipv4Address& next)
+{
+  CarInfo& Entry = m_lc_info[ID];
+  RoutingTableEntry RTE;
+  RTE.destAddr = dest;
+  RTE.mask = mask;
+  RTE.nextHop = next;
+  Entry.R_Table.push_back (RTE);
+}
+
+void
+RoutingProtocol::ClearAllTables ()
+{
+  for (std::map<Ipv4Address, CarInfo>::iterator it = m_lc_info.begin (); it!=m_lc_info.end(); ++it)
+    {
+      it->second.R_Table.clear ();
+    }
+}
 
 
 } // namespace sdn

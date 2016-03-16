@@ -262,11 +262,12 @@ public:
 
 private:
   std::vector< std::set<Ipv4Address> > m_Sections;
-  ShortHop GetShortHop(Ipv4Address IDa, Ipv4Address IDb);
+  ShortHop GetShortHop(const Ipv4Address& IDa, const Ipv4Address& IDb);
   void LCAddEntry( const Ipv4Address& ID,
                    const Ipv4Address& dest,
                    const Ipv4Address& mask,
                    const Ipv4Address& next);
+  void ClearAllTables();
 };
 
 
