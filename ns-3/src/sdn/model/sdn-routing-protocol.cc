@@ -1213,13 +1213,13 @@ RoutingProtocol::ComputeRoute ()
 ShortHop
 RoutingProtocol::GetShortHop(const Ipv4Address& IDa, const Ipv4Address& IDb)
 {
-  double vxa = m_lc_info[IDa].Velocity.x,
-         vxb = m_lc_info[IDb].Velocity.x;
+  double const vxa = m_lc_info[IDa].Velocity.x,
+               vxb = m_lc_info[IDb].Velocity.x;
   //Predict
-  double pxa = m_lc_info[IDa].GetPos ().x,
-         pxb = m_lc_info[IDb].GetPos ().x;
+  double const pxa = m_lc_info[IDa].GetPos ().x,
+               pxb = m_lc_info[IDb].GetPos ().x;
   // time to b left
-  double t2bl = (((pxb / SIGNAL_RANGE + 1)*SIGNAL_RANGE) - pxb) / vxb;
+  double const t2bl = (ROAD_LENGTH - pxb) / vxb;
   if ((pxb - pxa < SIGNAL_RANGE) && (abs((pxb + vxb*t2bl)-(pxa + vxa*t2bl)) < SIGNAL_RANGE))
     {
       ShortHop sh;
@@ -1232,7 +1232,7 @@ RoutingProtocol::GetShortHop(const Ipv4Address& IDa, const Ipv4Address& IDb)
     {
       ShortHop sh;
       sh.isTransfer = true;
-      sh.t = 0;
+      sh.t = 0; // Time when connection loss
       sh.hopnumber = INFHOP;
       if (pxb - pxa < SIGNAL_RANGE)
         {
@@ -1249,14 +1249,14 @@ RoutingProtocol::GetShortHop(const Ipv4Address& IDa, const Ipv4Address& IDb)
       for (std::map<Ipv4Address, CarInfo>::const_iterator cit = m_lc_info.begin ();
            cit != m_lc_info.end (); ++cit)
         {
-          double vxc = cit->second.Velocity.x;
+          double const vxc = cit->second.Velocity.x;
           //pxc when t
-          double tpxc = cit->second.GetPos ().x + vxc * sh.t;
+          double const tpxc = cit->second.GetPos ().x + vxc * sh.t;
           //pxa and pxb when t
-          double tpxa = pxa + vxa * sh.t,
-                 tpxb = pxb + vxb * sh.t;
+          double const tpxa = pxa + vxa * sh.t,
+                       tpxb = pxb + vxb * sh.t;
           //t2bl minus t
-          double t2blmt = t2bl - sh.t;
+          double const t2blmt = t2bl - sh.t;
           if ((tpxa<tpxc)&&(tpxc<tpxb))
             {
               if ((abs((tpxb + vxb*t2blmt)-(tpxc + vxc*t2blmt)) < SIGNAL_RANGE)&&
