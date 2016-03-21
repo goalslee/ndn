@@ -932,8 +932,31 @@ RoutingProtocol::GetType () const
 void
 RoutingProtocol::SendRoutingMessage ()
 {
-  std::cout<<"RoutingProtocol::SendRoutingMessage"<<std::endl;
-  // \TODO
+  NS_LOG_FUNCTION (this);
+
+  for (std::map<Ipv4Address, CarInfo>::const_iterator cit = m_lc_info.begin ();
+       cit != m_lc_info.end (); ++cit)
+    {
+      sdn::MessageHeader msg;
+      Time now = Simulator::Now ();
+      msg.SetVTime (m_helloInterval);
+      msg.SetTimeToLive (41993);//Just MY Birthday.
+      msg.SetMessageSequenceNumber (GetMessageSequenceNumber ());
+      msg.SetMessageType (sdn::MessageHeader::ROUTING_MESSAGE);
+      sdn::MessageHeader::Rm &rm = msg.GetRm ();
+      rm.ID = cit->first;
+      sdn::MessageHeader::Rm::Routing_Tuple rt;
+      for (std::vector<RoutingTableEntry>::const_iterator cit2 = cit->second.R_Table.begin ();
+           cit2 != cit->second.R_Table.end (); ++cit2)
+        {
+          rt.destAddress = cit2->destAddr;
+          rt.mask = cit2->mask;
+          rt.nextHop = cit2->nextHop;
+          rm.routingTables.push_back (rt);
+        }
+      rm.routingMessageSize = rm.routingTables.size ();
+      QueueMessage (msg, JITTER);
+    }
 }
 
 void

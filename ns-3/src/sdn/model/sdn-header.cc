@@ -29,7 +29,7 @@
 #define SDN_PKT_HEADER_SIZE 8
 #define SDN_MSG_HEADER_SIZE 8
 #define SDN_HELLO_HEADER_SIZE 28
-#define SDN_RM_HEADER_SIZE 8
+#define SDN_RM_HEADER_SIZE 16
 #define SDN_RM_TUPLE_SIZE 3
 
 NS_LOG_COMPONENT_DEFINE ("SdnHeader");
@@ -64,7 +64,9 @@ NS_OBJECT_ENSURE_REGISTERED (PacketHeader);
 
 
 
-PacketHeader::PacketHeader ()
+PacketHeader::PacketHeader () :
+    m_packetLength (0),
+    m_packetSequenceNumber (0)
 {
 }
 
@@ -124,7 +126,11 @@ PacketHeader::Deserialize (Buffer::Iterator start)
 NS_OBJECT_ENSURE_REGISTERED (MessageHeader);
 
 MessageHeader::MessageHeader ()
-  : m_messageType (MessageHeader::MessageType (0))
+  : m_messageType (MessageHeader::MessageType (0)),
+    m_vTime (0),
+    m_timeToLive (0),
+    m_messageSequenceNumber (0),
+    m_messageSize (0)
 {
 }
 
