@@ -684,7 +684,6 @@ RoutingProtocol::RouteOutput (Ptr<Packet> p,
       if (numOifAddresses == 1) {
           ifAddr = m_ipv4->GetAddress (interfaceIdx, 0);
         } else {
-          /// \todo Implment IP aliasing and OLSR
           NS_FATAL_ERROR ("XXX Not implemented yet:  IP aliasing and OLSR");
         }
       rtentry->SetSource (ifAddr.GetLocal ());
@@ -1191,6 +1190,7 @@ RoutingProtocol::ComputeRoute ()
 
     }
 
+  //Awake ComputeRoute when the first car left the first area.
   double vx = m_lc_info[vinSet0].Velocity.x;
   double px = m_lc_info[vinSet0].GetPos ().x;
   double t2l;
@@ -1297,6 +1297,142 @@ RoutingProtocol::ClearAllTables ()
     }
 }
 
+int
+RoutingProtocol::GetArea (Vector3D position, double road_length, double signal_range) const
+{
+  double &px = position.x;
+  int numArea = GetNumArea (road_length, signal_range);
+  //0.5r ~ r ~ r ~...~ r ~ r ~ last (if length_of_last<=0.5r, last={0.5r}; else last = {padding_area, 0.5r});
+  if (px < 0.5*signal_range)
+    {
+      return 0;
+    }
+  else
+    {
+      road_length -= 0.5*signal_range;
+      px -= 0.5*signal_range;
+      int numOfTrivialArea = road_length / signal_range;
+      int numOfTrivialArea_car = px / signal_range;
+      double last_length = road_length - (signal_range * numOfTrivialArea);
+      double last_length_car = px - (signal_range * numOfTrivialArea_car);
+
+      if (numOfTrivialArea_car < numOfTrivialArea)
+        {
+          return numOfTrivialArea_car + 1;//Plus First Area;
+        }
+      else//numOfTrivialArea_car == numOfTrivialArea
+        {
+          if (numOfTrivialArea == 0)
+            {
+              /*
+               * 0.5r ~ <0.5r
+               *         ^here;
+               */
+              if (road_length < signal_range)
+                {
+                  return 1;
+                }
+              else
+                /*
+                 * 0.5r ~ padding ~ 0.5r
+                 *                  ^here
+                 */
+                if (road_length - px < 0.5 * signal_range)
+                  {
+                    return 2;
+                  }
+                /*
+                 * 0.5r ~ padding ~ 0.5r
+                 *            ^here
+                 */
+                else
+                  {
+                    return 1;
+                  }
+
+            }
+          else
+            {
+              if (last_length < 1e-10) //last_length == 0
+                {
+                  if (road_length - px < 0.5 * signal_range)
+                    {
+                      /*
+                       * ~ r ~ 0.5r ~ 0.5r
+                       *               ^here
+                       */
+                      return 1 + numOfTrivialArea + 1;
+                    }
+                  else
+                    {
+                      /*
+                       * ~ r ~ 0.5r ~ 0.5r
+                       *        ^here
+                       */
+                      return 1 + numOfTrivialArea;
+                    }
+                }
+              else
+                if (last_length < 0.5 * signal_range)
+                  {
+                    /*
+                     * ~ r ~ last
+                     *        ^here;
+                     */
+                    return 1 + numOfTrivialArea + 1;
+                  }
+                else
+                  {
+                    if (road_length - px < 0.5 * signal_range)
+                      {
+                        /*
+                         * ~ r ~ padding ~ 0.5r
+                         *                  ^here
+                         */
+                        return 1 + numOfTrivialArea + 2;
+                      }
+                    else
+                      {
+                        /*
+                         * ~ r ~ padding ~ 0.5r
+                         *        ^here
+                         */
+                        return 1 + numOfTrivialArea + 1;
+                      }
+                  }
+            }
+        }
+    }
+
+}
+
+int
+RoutingProtocol::GetNumArea (double road_length, double signal_range)
+{
+  if (road_length < 0.5*signal_range)
+    {
+      return 1;
+    }
+  else
+    {
+      road_length -= 0.5*signal_range;
+      int numOfTrivialArea = road_length / signal_range;
+      double last_length = road_length - (signal_range * numOfTrivialArea);
+      if (last_length < 1e-10)//last_length == 0 Devied the last TrivialArea into 2
+        {
+          return 1 + numOfTrivialArea + 1;//First Area + TrivialArea + LastArea;
+        }
+      else
+        if (last_length < 0.5*signal_range)//0<last_length<0.5r
+          {
+            return 1 + numOfTrivialArea + 1;//First Area + TrivialArea + LastArea;
+          }
+        else//<0.5r<last_length<r
+          {
+            return 1 + numOfTrivialArea + 2;//First Area + TrivialArea + paddingArea +LastArea;
+          }
+    }
+}
 
 } // namespace sdn
 } // namespace ns3

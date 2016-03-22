@@ -64,7 +64,7 @@ class CarInfo
 public:
 
   //Get position by this time
-  Vector3D GetPos() const
+  Vector3D GetPos () const
   {
     double t = Simulator::Now ().GetSeconds () - LastActive.GetSeconds ();
     double x = this->Position.x + this->Velocity.x * t,
@@ -257,17 +257,21 @@ private:
   NodeType m_nodetype;
 
 public:
-  void SetType(NodeType nt); //implemented
-  NodeType GetType() const; //implemented
+  void SetType (NodeType nt); //implemented
+  NodeType GetType () const; //implemented
 
 private:
   std::vector< std::set<Ipv4Address> > m_Sections;
-  ShortHop GetShortHop(const Ipv4Address& IDa, const Ipv4Address& IDb);
+  ShortHop GetShortHop (const Ipv4Address& IDa, const Ipv4Address& IDb);
   void LCAddEntry( const Ipv4Address& ID,
                    const Ipv4Address& dest,
                    const Ipv4Address& mask,
                    const Ipv4Address& next);
-  void ClearAllTables();
+  void ClearAllTables ();
+
+  int GetArea (Vector3D position, double road_length, double signal_range) const;
+  static int GetNumArea (double road_length, double signal_range);
+
 };
 
 
