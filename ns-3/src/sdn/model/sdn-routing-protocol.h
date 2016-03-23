@@ -269,8 +269,30 @@ private:
                    const Ipv4Address& next);
   void ClearAllTables ();
 
-  int GetArea (Vector3D position, double road_length, double signal_range) const;
-  static int GetNumArea (double road_length, double signal_range);
+  int GetArea (Vector3D position) const;
+  int GetNumArea () const;
+  void Init_NumArea();
+  int m_numArea;
+  bool m_isPadding;
+  bool m_numAreaVaild;
+
+  bool isPaddingExist () const;
+
+  void RemoveTimeOut ();
+
+  double m_road_length;
+  double m_signal_range;
+
+  void Do_Init_Compute ();
+  void Do_Update ();
+  void Reschedule ();
+
+  void Partition ();
+  void SetN_Init ();
+  void OtherSet_Init ();
+  void SelectNode ();
+
+
 
 };
 

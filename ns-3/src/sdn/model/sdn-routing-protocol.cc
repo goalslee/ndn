@@ -115,9 +115,15 @@ RoutingProtocol::RoutingProtocol ()
     m_helloTimer (Timer::CANCEL_ON_DESTROY),
     m_rmTimer (Timer::CANCEL_ON_DESTROY),
     m_queuedMessagesTimer (Timer::CANCEL_ON_DESTROY),
-    m_nodetype (OTHERS)
+    m_nodetype (OTHERS),
+    m_numArea (0),
+    m_isPadding (false),
+    m_numAreaVaild (false),
+    m_road_length (ROAD_LENGTH),
+    m_signal_range (SIGNAL_RANGE)
 {
   m_uniformRandomVariable = CreateObject<UniformRandomVariable> ();
+  Init_NumArea();
 }
 
 RoutingProtocol::~RoutingProtocol ()
@@ -997,32 +1003,64 @@ RoutingProtocol::ProcessHM (const sdn::MessageHeader &msg)
 void
 RoutingProtocol::ComputeRoute ()
 {
-  //Remove Timeout Tuples first.
-  Time now = Simulator::Now ();
-  std::map<Ipv4Address, CarInfo>::iterator it = m_lc_info.begin ();
-  std::vector<Ipv4Address> pendding;
-  while (it != m_lc_info.end ())
-    {
-      if (now.GetSeconds() - it->second.LastActive.GetSeconds () > 3 * m_helloInterval.GetSeconds())
-        {
-          pendding.push_back (it->first);
-        }
-      ++it;
-    }
-  for (std::vector<Ipv4Address>::iterator it = pendding.begin ();
-      it != pendding.end(); ++it)
-    {
-      m_lc_info.erase((*it));
-    }
-  //End of Removing
+  RemoveTimeOut (); //Remove Stale Tuple
 
-  int numArea = ROAD_LENGTH / SIGNAL_RANGE;
-  if (ROAD_LENGTH % SIGNAL_RANGE)
+  if (m_Sections.empty ())
     {
-      ++numArea;
+      Do_Init_Compute ();
+    }
+  else
+    {
+      Do_Update ();
     }
 
-  Ipv4Address vinSet0;
+  SendRoutingMessage ();
+  Reschedule ();
+}//RoutingProtocol::ComputeRoute
+
+void
+RoutingProtocol::Do_Init_Compute ()
+{
+  Partition ();
+  SetN_Init ();
+  OtherSet_Init ();
+  SelectNode ();
+}
+
+void
+RoutingProtocol::Partition ()
+{
+  int numArea = GetNumArea();
+  for (int i = 0; i < numArea; ++i)
+    {
+      m_Sections.push_back (std::set<Ipv4Address> ());
+    }
+  for (std::map<Ipv4Address, CarInfo>::const_iterator cit = m_lc_info.begin ();
+       cit != m_lc_info.end(); ++cit)
+    {
+      m_Sections[GetArea (cit->second.Position)].insert (cit->first);
+    }
+}
+
+void
+RoutingProtocol::SetN_Init ()
+{
+  int numArea = GetNumArea();
+  for (std::set<Ipv4Address>::const_iterator cit = m_Sections[numArea-1].begin ();
+      cit != m_Sections[numArea-1].end (); ++cit)
+    {
+      m_lc_info[(*cit)].minhop = 1;
+      m_lc_info[(*cit)].ID_of_minhop = Ipv4Address::GetZero ();
+    }
+}
+
+void
+RoutingProtocol::OtherSet_Init ()
+{
+  int numArea = GetNumArea();
+  for (int = numArea - 2)
+}
+{  Ipv4Address vinSet0;
 
   if (1)//(m_Sections.empty ())// Do Init
     {
@@ -1208,7 +1246,10 @@ RoutingProtocol::ComputeRoute ()
   std::cout<<"m_rmTimer.Schedule(Seconds(t2l)), t2l?"<<t2l<<std::endl;
   m_rmTimer.Schedule(Seconds(t2l));
 
-}//RoutingProtocol::ComputeRoute
+}
+
+
+
 
 ShortHop
 RoutingProtocol::GetShortHop(const Ipv4Address& IDa, const Ipv4Address& IDb)
@@ -1298,23 +1339,23 @@ RoutingProtocol::ClearAllTables ()
 }
 
 int
-RoutingProtocol::GetArea (Vector3D position, double road_length, double signal_range) const
+RoutingProtocol::GetArea (Vector3D position) const
 {
   double &px = position.x;
-  int numArea = GetNumArea (road_length, signal_range);
+  int numArea = GetNumArea ();
   //0.5r ~ r ~ r ~...~ r ~ r ~ last (if length_of_last<=0.5r, last={0.5r}; else last = {padding_area, 0.5r});
-  if (px < 0.5*signal_range)
+  if (px < 0.5*m_signal_range)
     {
       return 0;
     }
   else
     {
-      road_length -= 0.5*signal_range;
-      px -= 0.5*signal_range;
-      int numOfTrivialArea = road_length / signal_range;
-      int numOfTrivialArea_car = px / signal_range;
-      double last_length = road_length - (signal_range * numOfTrivialArea);
-      double last_length_car = px - (signal_range * numOfTrivialArea_car);
+      m_road_length -= 0.5*m_signal_range;
+      px -= 0.5*m_signal_range;
+      int numOfTrivialArea = m_road_length / m_signal_range;
+      int numOfTrivialArea_car = px / m_signal_range;
+      double last_length = m_road_length - (m_signal_range * numOfTrivialArea);
+      double last_length_car = px - (m_signal_range * numOfTrivialArea_car);
 
       if (numOfTrivialArea_car < numOfTrivialArea)
         {
@@ -1328,7 +1369,7 @@ RoutingProtocol::GetArea (Vector3D position, double road_length, double signal_r
                * 0.5r ~ <0.5r
                *         ^here;
                */
-              if (road_length < signal_range)
+              if (m_road_length < m_signal_range)
                 {
                   return 1;
                 }
@@ -1337,7 +1378,7 @@ RoutingProtocol::GetArea (Vector3D position, double road_length, double signal_r
                  * 0.5r ~ padding ~ 0.5r
                  *                  ^here
                  */
-                if (road_length - px < 0.5 * signal_range)
+                if (m_road_length - px < 0.5 * m_signal_range)
                   {
                     return 2;
                   }
@@ -1355,7 +1396,7 @@ RoutingProtocol::GetArea (Vector3D position, double road_length, double signal_r
             {
               if (last_length < 1e-10) //last_length == 0
                 {
-                  if (road_length - px < 0.5 * signal_range)
+                  if (m_road_length - px < 0.5 * m_signal_range)
                     {
                       /*
                        * ~ r ~ 0.5r ~ 0.5r
@@ -1373,7 +1414,7 @@ RoutingProtocol::GetArea (Vector3D position, double road_length, double signal_r
                     }
                 }
               else
-                if (last_length < 0.5 * signal_range)
+                if (last_length < 0.5 * m_signal_range)
                   {
                     /*
                      * ~ r ~ last
@@ -1383,7 +1424,7 @@ RoutingProtocol::GetArea (Vector3D position, double road_length, double signal_r
                   }
                 else
                   {
-                    if (road_length - px < 0.5 * signal_range)
+                    if (m_road_length - px < 0.5 * m_signal_range)
                       {
                         /*
                          * ~ r ~ padding ~ 0.5r
@@ -1407,30 +1448,69 @@ RoutingProtocol::GetArea (Vector3D position, double road_length, double signal_r
 }
 
 int
-RoutingProtocol::GetNumArea (double road_length, double signal_range)
+RoutingProtocol::GetNumArea () const
 {
-  if (road_length < 0.5*signal_range)
+  return m_numArea;
+}
+
+void
+RoutingProtocol::Init_NumArea ()
+{
+  int ret;
+  if (m_road_length < 0.5*m_signal_range)
     {
-      return 1;
+      ret = 1;
     }
   else
     {
-      road_length -= 0.5*signal_range;
-      int numOfTrivialArea = road_length / signal_range;
-      double last_length = road_length - (signal_range * numOfTrivialArea);
+      m_road_length -= 0.5*m_signal_range;
+      int numOfTrivialArea = m_road_length / m_signal_range;
+      double last_length = m_road_length - (m_signal_range * numOfTrivialArea);
       if (last_length < 1e-10)//last_length == 0 Devied the last TrivialArea into 2
         {
-          return 1 + numOfTrivialArea + 1;//First Area + TrivialArea + LastArea;
+          ret = 1 + (numOfTrivialArea - 1) + 1 + 1;//First Area + TrivialArea-1 + Padding + LastArea;
+          m_isPadding = true;
         }
       else
-        if (last_length < 0.5*signal_range)//0<last_length<0.5r
+        if (last_length < 0.5*m_signal_range)//0<last_length<0.5r
           {
-            return 1 + numOfTrivialArea + 1;//First Area + TrivialArea + LastArea;
+            ret = 1 + numOfTrivialArea + 1;//First Area + TrivialArea + LastArea;
+            m_isPadding = false;
           }
         else//<0.5r<last_length<r
           {
-            return 1 + numOfTrivialArea + 2;//First Area + TrivialArea + paddingArea +LastArea;
+            ret = 1 + numOfTrivialArea + 2;//First Area + TrivialArea + paddingArea +LastArea;
+            m_isPadding = true;
           }
+    }
+  m_numArea = ret;
+  m_numAreaVaild = true;
+}
+
+bool
+RoutingProtocol::isPaddingExist () const
+{
+  return m_isPadding;
+}
+
+void
+RoutingProtocol::RemoveTimeOut()
+{
+  Time now = Simulator::Now ();
+  std::map<Ipv4Address, CarInfo>::iterator it = m_lc_info.begin ();
+  std::vector<Ipv4Address> pendding;
+  while (it != m_lc_info.end ())
+    {
+      if (now.GetSeconds() - it->second.LastActive.GetSeconds () > 3 * m_helloInterval.GetSeconds())
+        {
+          pendding.push_back (it->first);
+        }
+      ++it;
+    }
+  for (std::vector<Ipv4Address>::iterator it = pendding.begin ();
+      it != pendding.end(); ++it)
+    {
+      m_lc_info.erase((*it));
     }
 }
 
