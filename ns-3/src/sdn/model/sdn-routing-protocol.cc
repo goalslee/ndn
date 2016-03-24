@@ -601,6 +601,7 @@ RoutingProtocol::RouteInput(Ptr<const Packet> p,
     }
 
   // Forwarding
+  //TODO
   Ptr<Ipv4Route> rtentry;
   RoutingTableEntry entry;
   if (Lookup (header.GetDestination (), entry))
@@ -1058,124 +1059,154 @@ void
 RoutingProtocol::OtherSet_Init ()
 {
   int numArea = GetNumArea();
-  for (int = numArea - 2)
-}
-{  Ipv4Address vinSet0;
-
-  if (1)//(m_Sections.empty ())// Do Init
+  m_lc_info.clear ();
+  for (int area = numArea - 2; area >= 0; --area)
     {
-      for (int i = 0;i<numArea;++i)
+      SortByDistance (area);
+      CalcShortHopOfArea (area, area + 1);
+      if ((area == numArea - 3) && isPaddingExist ())
         {
-          m_Sections.push_back (std::set<Ipv4Address> ());
+          CalcShortHopOfArea (area, area + 2);
         }
+      CalcIntraArea (area);
+    }
+}
 
-      //Step1  Fen Qu
-      //Area Start from 0.<<<<<<<<<<<<<<<<<<<<<
-      for (std::map<Ipv4Address, CarInfo>::const_iterator cit = m_lc_info.begin (); cit!=m_lc_info.end(); ++cit)
+void
+RoutingProtocol::SortByDistance (int area)
+{
+  m_list4sort.clear ();
+  for (std::set<Ipv4Address>::const_iterator cit = m_Sections[area].begin ();
+      cit != m_Sections[area].end (); ++cit)
+    {
+      bool done = false;
+      for (std::list<Ipv4Address>::iterator it = m_list4sort.begin ();
+           it != m_list4sort.end (); ++it)
         {
-          int pos = cit->second.GetPos ().x / SIGNAL_RANGE;
-          m_Sections[pos].insert (cit->first);
-        }
-
-      //Step2 jisuan Set n
-      for (std::set<Ipv4Address>::const_iterator cit = m_Sections[numArea-1].begin ();
-          cit != m_Sections[numArea-1].end (); ++cit)
-        {
-          m_lc_info[(*cit)].minhop = 1;
-          m_lc_info[(*cit)].ID_of_minhop = Ipv4Address::GetZero ();
-        }
-
-      //Step3
-      //hold all info
-      std::map<Ipv4Address, std::list<ShortHop> > lc_shorthop;
-      for (int i = numArea-2; i>=0 ; --i)
-        {
-          //sort
-          std::list<Ipv4Address> list4sort;
-          for (std::set<Ipv4Address>::const_iterator cit = m_Sections[i].begin ();
-              cit != m_Sections[i].end (); ++cit)
+          if (m_lc_info[*it].GetPos ().x < m_lc_info[*cit].GetPos ().x)
             {
-              bool done = false;
-              for (std::list<Ipv4Address>::iterator it = list4sort.begin ();
-                   it != list4sort.end (); ++it)
+              m_list4sort.insert (it, *cit);
+              done = true;
+              break;
+            }
+        }
+      if (!done)
+        {
+          m_list4sort.push_back (*cit);
+        }
+    }
+}
+
+void
+RoutingProtocol::CalcShortHopOfArea (int fromArea, int toArea)
+{
+  for (std::list<Ipv4Address>::const_iterator cit = m_list4sort.begin ();
+       cit != m_list4sort.end (); ++cit)
+    {
+      for (std::set<Ipv4Address>::const_iterator cit2 = m_Sections[toArea].begin ();
+           cit2 != m_Sections[toArea].end (); ++cit2)
+        {
+          m_lc_shorthop[*cit].push_back (GetShortHop (*cit,*cit2));
+        }
+
+      UpdateMinHop (*cit);
+    }
+}
+
+void
+RoutingProtocol::UpdateMinHop (const Ipv4Address &ID)
+{
+  uint32_t theminhop = INFHOP;
+  Ipv4Address IDofminhop;
+  for (std::list<ShortHop>::const_iterator cit = m_lc_shorthop[ID].begin ();
+       cit != m_lc_shorthop[ID].end (); ++cit)
+    {
+      if (cit->hopnumber < theminhop)
+        {
+          theminhop = cit->hopnumber;
+          if (cit->isTransfer)
+            {
+              IDofminhop = cit->proxyID;
+            }
+          else
+            {
+              IDofminhop = cit->nextID;
+            }
+        }
+    }
+  m_lc_info[ID].ID_of_minhop = IDofminhop;
+  m_lc_info[ID].minhop = theminhop;
+}
+
+void
+RoutingProtocol::CalcIntraArea (int area)
+{
+  for (std::set<Ipv4Address>::const_iterator cit = m_Sections[area].begin ();
+      cit != m_Sections[area].end (); ++cit)
+    {
+      CarInfo& carinfo_temp = m_lc_info[*cit];//efficiency
+      for (std::set<Ipv4Address>::const_iterator cit2 = m_Sections[area].begin ();
+           cit2 != m_Sections[area].end (); ++cit2)
+        {
+          if (m_lc_info[*cit2].minhop + 1 < carinfo_temp.minhop)
+            {
+              ShortHop sh = GetShortHop (*cit, *cit2);
+              m_lc_shorthop[*cit].push_back (sh);
+              if (sh.hopnumber < carinfo_temp.minhop)
                 {
-                  if (m_lc_info[*it].GetPos ().x < m_lc_info[*cit].GetPos ().x)
+                  carinfo_temp.minhop = sh.hopnumber;
+                  if (sh.isTransfer)
                     {
-                      list4sort.insert (it, *cit);
-                      done = true;
-                      break;
+                      carinfo_temp.ID_of_minhop = sh.IDb;
                     }
-                }
-              if (!done)
-                {
-                  list4sort.push_back (*cit);
+                  else
+                    {
+                      carinfo_temp.ID_of_minhop = sh.nextID;
+                    }
                 }
             }
+        }
+    }
+}
 
-          //inter-area
-          for (std::list<Ipv4Address>::const_iterator cit = list4sort.begin ();
-               cit != list4sort.end (); ++cit)
-            {
-              for (std::set<Ipv4Address>::const_iterator cit2 = m_Sections[i+1].begin ();
-                   cit2 != m_Sections[i+1].end (); ++cit2)
-                {
-                  lc_shorthop[*cit].push_back (GetShortHop (*cit,*cit2));
-                }//for (std::set ...
+void
+RoutingProtocol::SelectNode ()
+{
+  //4-1
+  ResetAppointmentResult ();
+  Ipv4Address The_Car;
+  uint32_t minhop_of_tc = INFHOP;
 
-              //minhop = min(shorthop)
-              uint32_t theminhop = INFHOP;
-              Ipv4Address IDofminhop;
-              for (std::list<ShortHop>::const_iterator cit2 = lc_shorthop[*cit].begin ();
-                   cit2 != lc_shorthop[*cit].end (); ++cit2)
-                {
-                  if (cit2->hopnumber < theminhop)
-                    {
-                      theminhop = cit2->hopnumber;
-                      if (cit2->isTransfer)
-                        {
-                          IDofminhop = cit2->IDb;
-                        }
-                      else
-                        {
-                          IDofminhop = cit2->nextID;
-                        }
-                    }
-                }
-              m_lc_info[*cit].ID_of_minhop = IDofminhop;
-              m_lc_info[*cit].minhop = theminhop;
-            }//for (std::list ...
+  //First Area
+  for (std::set<Ipv4Address>::const_iterator cit = m_Sections[0].begin ();
+      cit != m_Sections[0].end (); ++cit)
+    {
+      CarInfo& temp_info = m_lc_info[*cit];
+      if (temp_info.minhop < minhop_of_tc)
+        {
+          minhop_of_tc = temp_info.minhop;
+          The_Car = *cit;
+        }
+    }
+  Ipv4Address ZERO = Ipv4Address::GetZero ();
+  while (The_Car != ZERO)
+    {
+      m_lc_info[The_Car].appointmentResult = FORWARDER;
+      The_Car = m_lc_info[The_Car].ID_of_minhop;
+    }
+}
 
-          //intra-area
-          for (std::set<Ipv4Address>::const_iterator cit = m_Sections[i].begin ();
-              cit != m_Sections[i].end (); ++cit)
-            {
-              CarInfo& carinfo_temp = m_lc_info[*cit];//efficiency
-              for (std::set<Ipv4Address>::const_iterator cit2 = m_Sections[i].begin ();
-                   cit2 != m_Sections[i].end (); ++cit2)
-                {
-                  if (m_lc_info[*cit2].minhop < carinfo_temp.minhop)
-                    {
-                      ShortHop sh = GetShortHop (*cit, *cit2);
-                      lc_shorthop[*cit].push_back (sh);
-                      if (sh.hopnumber < carinfo_temp.minhop)
-                        {
-                          carinfo_temp.minhop = sh.hopnumber;
-                          if (sh.isTransfer)
-                            {
-                              carinfo_temp.ID_of_minhop = sh.IDb;
-                            }
-                          else
-                            {
-                              carinfo_temp.ID_of_minhop = sh.nextID;
-                            }
-                        }
-                    }
-                }//for (std::set<Ipv4Address> ...
-            }//intra-area  for (std::set<Ip ...
-        }//Step3 for (int i = num ...
+void
+RoutingProtocol::ResetAppointmentResult ()
+{
+  for (std::map<Ipv4Address, CarInfo>::iterator it = m_lc_info.begin ();
+       it != m_lc_info.end (); ++it)
+    {
+      it->second.appointmentResult = NORMAL;
+    }
+}
 
-
-      //Step 4
+{  {   //Step 4
       //4-1
       Ipv4Address The_Car;
       uint32_t minhop_of_tc = INFHOP;
@@ -1305,7 +1336,7 @@ RoutingProtocol::GetShortHop(const Ipv4Address& IDa, const Ipv4Address& IDb)
                 {
                   sh.IDa = IDa;
                   sh.IDb = IDb;
-                  sh.ID = cit->first;
+                  sh.proxyID = cit->first;
                   sh.hopnumber = m_lc_info[IDb].minhop + 2;
                   return sh;
                 }//if ((abs((tpxb ...

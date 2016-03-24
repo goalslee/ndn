@@ -44,6 +44,7 @@ namespace sdn {
 
 
 enum NodeType {CAR, LOCAL_CONTROLLER, OTHERS};
+enum AppointmentType {FORWARDER, NORMAL};
 
 /// An SDN's routing table entry.
 struct RoutingTableEntry
@@ -79,6 +80,7 @@ public:
   std::vector<RoutingTableEntry> R_Table;
   uint32_t minhop;
   Ipv4Address ID_of_minhop;
+  AppointmentType appointmentResult;
 };
 
 struct ShortHop
@@ -86,7 +88,7 @@ struct ShortHop
   Ipv4Address nextID;
   uint32_t hopnumber;
   bool isTransfer;
-  Ipv4Address IDa, IDb, ID;
+  Ipv4Address IDa, IDb, proxyID;
   double t; //in secends
 };
 
@@ -255,6 +257,8 @@ public:
 
 private:
   NodeType m_nodetype;
+  //Only node type CAR use this(below)
+  AppointmentType m_appointmentResult;
 
 public:
   void SetType (NodeType nt); //implemented
@@ -292,7 +296,14 @@ private:
   void OtherSet_Init ();
   void SelectNode ();
 
-
+  void SortByDistance (int area);
+  void CalcShortHopOfArea (int fromArea, int toArea);
+  void CalcIntraArea (int area);
+  void UpdateMinHop (const Ipv4Address &ID);
+  //ResetAppointmentResult In m_lc_info;
+  void ResetAppointmentResult ();
+  std::list<Ipv4Address> m_list4sort;
+  std::map<Ipv4Address, std::list<ShortHop> > m_lc_shorthop;
 
 };
 
