@@ -44,7 +44,6 @@ namespace sdn {
 
 
 enum NodeType {CAR, LOCAL_CONTROLLER, OTHERS};
-enum AppointmentType {FORWARDER, NORMAL};
 
 /// An SDN's routing table entry.
 struct RoutingTableEntry

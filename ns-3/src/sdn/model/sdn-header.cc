@@ -31,6 +31,7 @@
 #define SDN_HELLO_HEADER_SIZE 28
 #define SDN_RM_HEADER_SIZE 16
 #define SDN_RM_TUPLE_SIZE 3
+#define SDN_APPOINTMENT_HEADER_SIZE 8
 
 NS_LOG_COMPONENT_DEFINE ("SdnHeader");
 
@@ -350,7 +351,47 @@ MessageHeader::Rm::Deserialize (Buffer::Iterator start,
   return (messageSize);
 }
 
+// ---------------- SDN Appointment Message -------------------------------
 
+void
+MessageHeader::Appointment::Print (std::ostream &os) const
+{
+  //TODO
+}
+
+uint32_t
+MessageHeader::Appointment::GetSerializedSize () const
+{
+  return SDN_APPOINTMENT_HEADER_SIZE;
+}
+
+void
+MessageHeader::Appointment::Serialize (Buffer::Iterator start) const
+{
+  Buffer::Iterator i = start;
+
+  i.WriteHtonU32 (this->ID.Get());
+  uint32_t at = 0;
+  if (ATField == FORWARDER)
+    at = 0xFFFF;
+  i.WriteHtonU32 (at);
+}
+
+uint32_t
+MessageHeader::Appointment::Deserialize (Buffer::Iterator start, uint32_t messageSize)
+{
+  Buffer::Iterator i = start;
+
+  uint32_t ip_temp = i.ReadNtohU32();
+  this->ID.Set (ip_temp);
+  uint32_t at = i.ReadNtohU32();
+  if (at)
+    this->ATField = FORWARDER;
+  else
+    this->ATField = NORMAL;
+
+  return (messageSize);
+}
 
 }
 }  // namespace sdn, ns3

@@ -31,6 +31,7 @@
 namespace ns3 {
 namespace sdn {
 
+enum AppointmentType {NORMAL, FORWARDER};
 float     rIEEE754 (uint32_t emf);
 uint32_t  IEEE754 (float dec);
 
@@ -121,8 +122,9 @@ class MessageHeader : public Header
 public:
 
   enum MessageType {
-    HELLO_MESSAGE    = 1,
-    ROUTING_MESSAGE  = 2,
+    HELLO_MESSAGE,
+    ROUTING_MESSAGE,
+    APPOINTMENT_MESSAGE
   };
 
   MessageHeader ();
@@ -328,12 +330,36 @@ public:
     uint32_t Deserialize (Buffer::Iterator start, uint32_t messageSize);
   };
 
+  //  Appointment Message Format
+  //    One Appointment is for one car only.
+  //    The proposed format of a appointment message is as follows:
+  //
+  //        0                   1                   2                   3
+  //        0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+  //       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  //       |                             Car ID                            |
+  //       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  //       |                       Appointment Type                        |
+  //       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+  struct Appointment
+  {
+    Ipv4Address ID;
+    AppointmentType ATField;
+
+    void Print (std::ostream &os) const;
+    uint32_t GetSerializedSize (void) const;
+    void Serialize (Buffer::Iterator start) const;
+    uint32_t Deserialize (Buffer::Iterator start, uint32_t messageSize);
+  };
+
 
 private:
   struct
   {
     Hello hello;
     Rm rm;
+    Appointment appointment;
   } m_message; // union not allowed
 
 public:
@@ -364,6 +390,18 @@ public:
     return (m_message.rm);
   }
 
+  Appointment& GetAppointment ()
+  {
+    if (m_messageType == 0)
+      {
+        m_messageType = APPOINTMENT_MESSAGE;
+      }
+    else
+      {
+        NS_ASSERT (m_messageType == APPOINTMENT_MESSAGE);
+      }
+    return (m_message.appointment);
+  }
 
   const Hello& GetHello () const
   {
@@ -375,6 +413,12 @@ public:
   {
     NS_ASSERT (m_messageType == ROUTING_MESSAGE);
     return (m_message.rm);
+  }
+
+  const Appointment& GetAppointment () const
+  {
+    NS_ASSERT (m_messageType == APPOINTMENT_MESSAGE);
+    return (m_message.appointment);
   }
 
 };
