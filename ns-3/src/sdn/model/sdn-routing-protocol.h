@@ -305,6 +305,7 @@ private:
   std::list<Ipv4Address> m_list4sort;
   std::map<Ipv4Address, std::list<ShortHop> > m_lc_shorthop;
 
+  Ipv4Address m_theFirstCar;//Use by Reschedule (); Assign by SelectNode ();
 };
 
 

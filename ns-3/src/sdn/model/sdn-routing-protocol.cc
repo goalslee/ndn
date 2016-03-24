@@ -1029,6 +1029,12 @@ RoutingProtocol::Do_Init_Compute ()
 }
 
 void
+RoutingProtocol::Do_Update ()
+{
+  //TODO
+}
+
+void
 RoutingProtocol::Partition ()
 {
   int numArea = GetNumArea();
@@ -1141,32 +1147,7 @@ RoutingProtocol::UpdateMinHop (const Ipv4Address &ID)
 void
 RoutingProtocol::CalcIntraArea (int area)
 {
-  for (std::set<Ipv4Address>::const_iterator cit = m_Sections[area].begin ();
-      cit != m_Sections[area].end (); ++cit)
-    {
-      CarInfo& carinfo_temp = m_lc_info[*cit];//efficiency
-      for (std::set<Ipv4Address>::const_iterator cit2 = m_Sections[area].begin ();
-           cit2 != m_Sections[area].end (); ++cit2)
-        {
-          if (m_lc_info[*cit2].minhop + 1 < carinfo_temp.minhop)
-            {
-              ShortHop sh = GetShortHop (*cit, *cit2);
-              m_lc_shorthop[*cit].push_back (sh);
-              if (sh.hopnumber < carinfo_temp.minhop)
-                {
-                  carinfo_temp.minhop = sh.hopnumber;
-                  if (sh.isTransfer)
-                    {
-                      carinfo_temp.ID_of_minhop = sh.IDb;
-                    }
-                  else
-                    {
-                      carinfo_temp.ID_of_minhop = sh.nextID;
-                    }
-                }
-            }
-        }
-    }
+  CalcShortHopOfArea (area, area);
 }
 
 void
@@ -1188,6 +1169,7 @@ RoutingProtocol::SelectNode ()
           The_Car = *cit;
         }
     }
+  m_theFirstCar = The_Car;
   Ipv4Address ZERO = Ipv4Address::GetZero ();
   while (The_Car != ZERO)
     {
@@ -1206,62 +1188,11 @@ RoutingProtocol::ResetAppointmentResult ()
     }
 }
 
-{  {   //Step 4
-      //4-1
-      Ipv4Address The_Car;
-      uint32_t minhop_of_tc = INFHOP;
-      for (std::set<Ipv4Address>::const_iterator cit = m_Sections[0].begin ();
-          cit != m_Sections[0].end (); ++cit)
-        {
-          CarInfo& temp_info = m_lc_info[*cit];
-          if (temp_info.minhop < minhop_of_tc)
-            {
-              minhop_of_tc = temp_info.minhop;
-              The_Car = *cit;
-            }
-        }
-
-      //4-2
-      Ipv4Address allzero = Ipv4Address::GetZero ();
-      Ipv4Address allone = Ipv4Address::GetBroadcast ();
-      std::set<Ipv4Address> Backward;
-      Ipv4Address LastCar;
-
-      ClearAllTables ();
-      vinSet0 = The_Car;
-      for (int i = 0;i<numArea;++i)
-        {
-          // Default Route, Going Forward
-          LCAddEntry (The_Car, allzero, allzero, m_lc_info[The_Car].ID_of_minhop);
-          for (std::set<Ipv4Address>::const_iterator cit = Backward.begin ();
-               cit != Backward.end (); ++cit)
-            {
-              LCAddEntry (The_Car, *cit, allone, LastCar);
-            }
-
-          for (std::set<Ipv4Address>::const_iterator cit = m_Sections[i].begin ();
-               cit != m_Sections[i].end (); ++cit)
-            {
-              if (*cit != The_Car)
-                {
-                  LCAddEntry (*cit, allzero, allzero, The_Car);
-                  LCAddEntry (The_Car, *cit, allone, *cit);
-                }
-                Backward.insert (*cit);
-            }
-          //Move to the next v
-          LastCar = The_Car;
-          The_Car = m_lc_info[The_Car].ID_of_minhop;
-        }
-    }//if (m_Sections.empty ()) ...
-  else
-    {
-
-    }
-
-  //Awake ComputeRoute when the first car left the first area.
-  double vx = m_lc_info[vinSet0].Velocity.x;
-  double px = m_lc_info[vinSet0].GetPos ().x;
+void
+RoutingProtocol::Reschedule ()
+{
+  double vx = m_lc_info[m_theFirstCar].Velocity.x;
+  double px = m_lc_info[m_theFirstCar].GetPos ().x;
   double t2l;
   if (vx == 0)
     {
@@ -1269,18 +1200,14 @@ RoutingProtocol::ResetAppointmentResult ()
     }
   else
     {
-      t2l= (((px / SIGNAL_RANGE + 1)*SIGNAL_RANGE) - px) / vx;
-      std::cout<<"vx,px,t2l"<<vx<<","<<px<<","<<t2l<<std::endl;
-      if (t2l < 0.5)
-        t2l = 0.5;
+      t2l= (0.5 * SIGNAL_RANGE - px) / vx;
     }
-  std::cout<<"m_rmTimer.Schedule(Seconds(t2l)), t2l?"<<t2l<<std::endl;
+  if (m_rmTimer.IsRunning ())
+    {
+      m_rmTimer.Remove ();
+    }
   m_rmTimer.Schedule(Seconds(t2l));
-
 }
-
-
-
 
 ShortHop
 RoutingProtocol::GetShortHop(const Ipv4Address& IDa, const Ipv4Address& IDb)
@@ -1373,7 +1300,7 @@ int
 RoutingProtocol::GetArea (Vector3D position) const
 {
   double &px = position.x;
-  int numArea = GetNumArea ();
+  double road_length = m_road_length;
   //0.5r ~ r ~ r ~...~ r ~ r ~ last (if length_of_last<=0.5r, last={0.5r}; else last = {padding_area, 0.5r});
   if (px < 0.5*m_signal_range)
     {
@@ -1381,12 +1308,11 @@ RoutingProtocol::GetArea (Vector3D position) const
     }
   else
     {
-      m_road_length -= 0.5*m_signal_range;
+      road_length -= 0.5*m_signal_range;
       px -= 0.5*m_signal_range;
-      int numOfTrivialArea = m_road_length / m_signal_range;
+      int numOfTrivialArea = road_length / m_signal_range;
       int numOfTrivialArea_car = px / m_signal_range;
-      double last_length = m_road_length - (m_signal_range * numOfTrivialArea);
-      double last_length_car = px - (m_signal_range * numOfTrivialArea_car);
+      double last_length = road_length - (m_signal_range * numOfTrivialArea);
 
       if (numOfTrivialArea_car < numOfTrivialArea)
         {
@@ -1400,7 +1326,7 @@ RoutingProtocol::GetArea (Vector3D position) const
                * 0.5r ~ <0.5r
                *         ^here;
                */
-              if (m_road_length < m_signal_range)
+              if (road_length < m_signal_range)
                 {
                   return 1;
                 }
@@ -1409,7 +1335,7 @@ RoutingProtocol::GetArea (Vector3D position) const
                  * 0.5r ~ padding ~ 0.5r
                  *                  ^here
                  */
-                if (m_road_length - px < 0.5 * m_signal_range)
+                if (road_length - px < 0.5 * m_signal_range)
                   {
                     return 2;
                   }
@@ -1427,7 +1353,7 @@ RoutingProtocol::GetArea (Vector3D position) const
             {
               if (last_length < 1e-10) //last_length == 0
                 {
-                  if (m_road_length - px < 0.5 * m_signal_range)
+                  if (road_length - px < 0.5 * m_signal_range)
                     {
                       /*
                        * ~ r ~ 0.5r ~ 0.5r
@@ -1455,7 +1381,7 @@ RoutingProtocol::GetArea (Vector3D position) const
                   }
                 else
                   {
-                    if (m_road_length - px < 0.5 * m_signal_range)
+                    if (road_length - px < 0.5 * m_signal_range)
                       {
                         /*
                          * ~ r ~ padding ~ 0.5r
@@ -1488,15 +1414,16 @@ void
 RoutingProtocol::Init_NumArea ()
 {
   int ret;
-  if (m_road_length < 0.5*m_signal_range)
+  double road_length = m_road_length;
+  if (road_length < 0.5*m_signal_range)
     {
       ret = 1;
     }
   else
     {
-      m_road_length -= 0.5*m_signal_range;
-      int numOfTrivialArea = m_road_length / m_signal_range;
-      double last_length = m_road_length - (m_signal_range * numOfTrivialArea);
+      road_length -= 0.5*m_signal_range;
+      int numOfTrivialArea = road_length / m_signal_range;
+      double last_length = road_length - (m_signal_range * numOfTrivialArea);
       if (last_length < 1e-10)//last_length == 0 Devied the last TrivialArea into 2
         {
           ret = 1 + (numOfTrivialArea - 1) + 1 + 1;//First Area + TrivialArea-1 + Padding + LastArea;
