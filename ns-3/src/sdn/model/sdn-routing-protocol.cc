@@ -1031,7 +1031,10 @@ RoutingProtocol::Do_Init_Compute ()
 void
 RoutingProtocol::Do_Update ()
 {
-  //TODO
+  ShiftArea ();
+  AddNewToZero ();
+  CalcSetZero ();
+  SelectNewNodeInAreaZero ();
 }
 
 void
@@ -1186,6 +1189,45 @@ RoutingProtocol::ResetAppointmentResult ()
     {
       it->second.appointmentResult = NORMAL;
     }
+}
+
+void
+RoutingProtocol::ShiftArea ()
+{
+  for (int i = GetNumArea () - 1; i>0; --i)
+    {
+      m_Sections[i] = m_Sections[i-1];
+    }
+  m_Sections[0].clear ();
+}
+
+void
+RoutingProtocol::AddNewToZero ()
+{
+  for (std::map<Ipv4Address, CarInfo>::const_iterator cit = m_lc_info.begin ();
+       cit != m_lc_info.end (); ++cit)
+    {
+      if (GetArea (cit->second.Position) == 0)
+        {
+          m_Sections[0].insert(cit->first);
+        }
+    }
+}
+
+void
+RoutingProtocol::CalcSetZero ()
+{
+  if (GetNumArea () > 1)
+    CalcShortHopOfArea (0,1);
+  if ((GetNumArea () == 3)&&(isPaddingExist ()))
+    CalcShortHopOfArea (0,2);
+  CalcIntraArea (0);
+}
+
+void
+RoutingProtocol::SelectNewNodeInAreaZero ()
+{
+  //TODO
 }
 
 void
