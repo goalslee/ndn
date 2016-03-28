@@ -224,7 +224,9 @@ private:
   void SendQueuedMessages ();//implemented
   void SendHello ();//implemented
   void SendRoutingMessage (); //Fullfilled
+  void SendAppointment();
 
+  void ProcessAppintment (const sdn::MessageHeader &msg);
   void ProcessRm (const sdn::MessageHeader &msg);//implemented
   void ProcessHM (const sdn::MessageHeader &msg); //implemented
 
@@ -309,7 +311,7 @@ private:
   void CalcSetZero ();
   void SelectNewNodeInAreaZero ();
 
-  Ipv4Address m_theFirstCar;//Use by Reschedule (); Assign by SelectNode ();
+  Ipv4Address m_theFirstCar;//Use by Reschedule (), SelectNewNodeInAreaZero(); Assign by SelectNode ();
 };
 
 

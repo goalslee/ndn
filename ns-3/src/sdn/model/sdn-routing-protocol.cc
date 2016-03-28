@@ -419,6 +419,15 @@ RoutingProtocol::RecvSDN (Ptr<Socket> socket)
             ProcessHM (messageHeader);
           break;
 
+        case sdn::MessageHeader::APPOINTMENT_MESSAGE:
+          NS_LOG_DEBUG (Simulator::Now ().GetSeconds ()
+                        << "s SDN node " << m_mainAddress
+                        << " received Appointment message of size "
+                        << messageHeader.GetSerializedSize ());
+          if (GetType() == CAR)
+            ProcessAppintment (messageHeader);
+          break;
+
         default:
           NS_LOG_DEBUG ("SDN message type " <<
                         int (messageHeader.GetMessageType ()) <<
@@ -429,6 +438,40 @@ RoutingProtocol::RecvSDN (Ptr<Socket> socket)
     
 }// End of RecvSDN
 
+void
+RoutingProtocol::ProcessHM (const sdn::MessageHeader &msg)
+{
+  std::cout<<m_mainAddress.Get ()%256<<" RoutingProtocol::ProcessHM "<<msg.GetHello ().ID.Get ()%256<<" m_lc_info size:"<<m_lc_info.size ()<<std::endl;
+
+  Ipv4Address ID = msg.GetHello ().ID;
+  std::map<Ipv4Address, CarInfo>::iterator it = m_lc_info.find (ID);
+
+  if (it != m_lc_info.end ())
+    {
+      it->second.Active = true;
+      it->second.LastActive = Simulator::Now ();
+      it->second.Position = msg.GetHello ().GetPosition ();
+      it->second.Velocity = msg.GetHello ().GetVelocity ();
+      it->second.minhop = 0;
+    }
+  else
+    {
+      CarInfo CI_temp;
+      CI_temp.Active = true;
+      CI_temp.LastActive = Simulator::Now ();
+      CI_temp.Position = msg.GetHello ().GetPosition ();
+      CI_temp.Velocity = msg.GetHello ().GetVelocity ();
+      m_lc_info[ID] = CI_temp;
+    }
+/*
+  std::cout<<m_lc_info[ID].Position.x<<","
+           <<m_lc_info[ID].Position.y<<","
+           <<m_lc_info[ID].Position.z<<","
+           <<m_lc_info[ID].Velocity.x<<","
+           <<m_lc_info[ID].Velocity.y<<","
+           <<m_lc_info[ID].Velocity.z<<std::endl;
+*/
+}
 
 // \brief Build routing table according to Rm
 void
@@ -461,6 +504,18 @@ RoutingProtocol::ProcessRm (const sdn::MessageHeader &msg)
       }
     }
 }
+
+void
+RoutingProtocol::ProcessAppintment (const sdn::MessageHeader &msg)
+{
+  NS_LOG_FUNCTION (msg);
+  const sdn::MessageHeader::Appointment &appointment = msg.GetAppointment ();
+  if (IsMyOwnAddress (appointment.ID))
+    {
+      m_appointmentResult = appointment.ATField;
+    }
+}
+
 
 void
 RoutingProtocol::Clear()
@@ -905,37 +960,6 @@ RoutingProtocol::SendHello ()
 }
 
 void
-RoutingProtocol::SetMobility (Ptr<MobilityModel> mobility)
-{
-  m_mobility = mobility;
-}
-
-void
-RoutingProtocol::SetType (NodeType nt)
-{
-  /*
-  switch (nt)
-  {
-    case CAR:
-      std::cout<<"C"<<std::endl;
-      break;
-    case LOCAL_CONTROLLER:
-      std::cout<<"L"<<std::endl;
-      break;
-    case OTHERS:
-      std::cout<<"O"<<std::endl;
-      break;
-  }*/
-  m_nodetype = nt;
-}
-
-NodeType
-RoutingProtocol::GetType () const
-{
-  return m_nodetype;
-}
-
-void
 RoutingProtocol::SendRoutingMessage ()
 {
   NS_LOG_FUNCTION (this);
@@ -966,40 +990,56 @@ RoutingProtocol::SendRoutingMessage ()
 }
 
 void
-RoutingProtocol::ProcessHM (const sdn::MessageHeader &msg)
+RoutingProtocol::SendAppointment ()
 {
-  std::cout<<m_mainAddress.Get ()%256<<" RoutingProtocol::ProcessHM "<<msg.GetHello ().ID.Get ()%256<<" m_lc_info size:"<<m_lc_info.size ()<<std::endl;
+  NS_LOG_FUNCTION (this);
 
-  Ipv4Address ID = msg.GetHello ().ID;
-  std::map<Ipv4Address, CarInfo>::iterator it = m_lc_info.find (ID);
-
-  if (it != m_lc_info.end ())
+  for (std::map<Ipv4Address, CarInfo>::const_iterator cit = m_lc_info.begin ();
+       cit != m_lc_info.end (); ++cit)
     {
-      it->second.Active = true;
-      it->second.LastActive = Simulator::Now ();
-      it->second.Position = msg.GetHello ().GetPosition ();
-      it->second.Velocity = msg.GetHello ().GetVelocity ();
-      it->second.minhop = 0;
+      sdn::MessageHeader msg;
+      Time now = Simulator::Now ();
+      msg.SetVTime (m_helloInterval);
+      msg.SetTimeToLive (41993);//Just MY Birthday.
+      msg.SetMessageSequenceNumber (GetMessageSequenceNumber ());
+      msg.SetMessageType (sdn::MessageHeader::APPOINTMENT_MESSAGE);
+      sdn::MessageHeader::Appointment &appointment = msg.GetAppointment ();
+      appointment.ID = cit->first;
+      appointment.ATField = cit->second.appointmentResult;
+      QueueMessage (msg, JITTER);
     }
-  else
-    {
-      CarInfo CI_temp;
-      CI_temp.Active = true;
-      CI_temp.LastActive = Simulator::Now ();
-      CI_temp.Position = msg.GetHello ().GetPosition ();
-      CI_temp.Velocity = msg.GetHello ().GetVelocity ();
-      m_lc_info[ID] = CI_temp;
-    }
-/*
-  std::cout<<m_lc_info[ID].Position.x<<","
-           <<m_lc_info[ID].Position.y<<","
-           <<m_lc_info[ID].Position.z<<","
-           <<m_lc_info[ID].Velocity.x<<","
-           <<m_lc_info[ID].Velocity.y<<","
-           <<m_lc_info[ID].Velocity.z<<std::endl;
-*/
 }
 
+void
+RoutingProtocol::SetMobility (Ptr<MobilityModel> mobility)
+{
+  m_mobility = mobility;
+}
+
+void
+RoutingProtocol::SetType (NodeType nt)
+{
+  /*
+  switch (nt)
+  {
+    case CAR:
+      std::cout<<"C"<<std::endl;
+      break;
+    case LOCAL_CONTROLLER:
+      std::cout<<"L"<<std::endl;
+      break;
+    case OTHERS:
+      std::cout<<"O"<<std::endl;
+      break;
+  }*/
+  m_nodetype = nt;
+}
+
+NodeType
+RoutingProtocol::GetType () const
+{
+  return m_nodetype;
+}
 
 void
 RoutingProtocol::ComputeRoute ()
@@ -1071,6 +1111,7 @@ RoutingProtocol::OtherSet_Init ()
   m_lc_info.clear ();
   for (int area = numArea - 2; area >= 0; --area)
     {
+      m_lc_shorthop.clear();
       SortByDistance (area);
       CalcShortHopOfArea (area, area + 1);
       if ((area == numArea - 3) && isPaddingExist ())
@@ -1217,6 +1258,7 @@ RoutingProtocol::AddNewToZero ()
 void
 RoutingProtocol::CalcSetZero ()
 {
+  m_lc_shorthop.clear();
   if (GetNumArea () > 1)
     CalcShortHopOfArea (0,1);
   if ((GetNumArea () == 3)&&(isPaddingExist ()))
@@ -1227,7 +1269,43 @@ RoutingProtocol::CalcSetZero ()
 void
 RoutingProtocol::SelectNewNodeInAreaZero ()
 {
-  //TODO
+  Ipv4Address The_Car;
+  uint32_t minhop_of_tc = INFHOP;
+  for (std::set<Ipv4Address>::const_iterator cit = m_Sections[0].begin ();
+       cit != m_Sections[0].end (); ++cit)
+    {
+      CarInfo& temp_info = m_lc_info[*cit];
+      if (temp_info.minhop < minhop_of_tc)
+        {
+          minhop_of_tc = temp_info.minhop;
+          The_Car = *cit;
+        }
+      else
+        if (temp_info.minhop == minhop_of_tc)
+          {
+            if (temp_info.ID_of_minhop == m_theFirstCar)
+              {
+                minhop_of_tc = temp_info.minhop;
+                The_Car = *cit;
+              }
+          }
+    }
+
+  if (m_lc_info[The_Car].ID_of_minhop == m_theFirstCar)
+    {
+      m_theFirstCar = The_Car;
+      m_lc_info[The_Car].appointmentResult = FORWARDER;
+    }
+  else
+    {
+      ResetAppointmentResult ();
+      m_theFirstCar = The_Car;
+      while (m_lc_info.find (The_Car) != m_lc_info.end ())
+        {
+          m_lc_info[The_Car].appointmentResult = FORWARDER;
+          The_Car = m_lc_info[The_Car].ID_of_minhop;
+        }
+    }
 }
 
 void
