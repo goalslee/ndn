@@ -5,7 +5,7 @@
  *      Author: chl
  */
 /*
-  ./waf --run "scratch/SDN --traceFile=/home/chl/ns-allinone-3.23/ns-3.23/scratch/mobility.tcl --nodeNum=135 --duration=131.0 --logFile=SDN.log --numPackets=130"
+  ./waf --run "SDN"
 */
 #include <iostream>
 #include <fstream>

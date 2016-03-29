@@ -108,7 +108,8 @@ public:
   ///        interface
   /// \param interface IPv4 interface index
   ///
-  void SetMainInterface (uint32_t interface);//implemented
+  void SetSCHInterface (uint32_t interface);//implemented
+  void SetCCHInterface (uint32_t interface);//implemented
 
   ///
   /// Dump the routing table
@@ -226,7 +227,7 @@ private:
   void SendRoutingMessage (); //Fullfilled
   void SendAppointment();
 
-  void ProcessAppintment (const sdn::MessageHeader &msg);
+  void ProcessAppointment (const sdn::MessageHeader &msg);
   void ProcessRm (const sdn::MessageHeader &msg);//implemented
   void ProcessHM (const sdn::MessageHeader &msg); //implemented
 
@@ -235,8 +236,13 @@ private:
   /// Check that address is one of my interfaces
   bool IsMyOwnAddress (const Ipv4Address & a) const;//implemented
 
-  Ipv4Address m_mainAddress;
+  void SetSCHinterface (uint32_t interface);
+  void SetCCHinterface (uint32_t interface);
 
+private:
+  Ipv4Address m_mainAddress;
+  uint32_t m_SCHinterface;
+  uint32_t m_CCHinterface;
   // One socket per interface, each bound to that interface's address
   // (reason: for VANET-SDN we need to distinguish CCH and SCH interfaces)
   std::map< Ptr<Socket>, Ipv4InterfaceAddress > m_socketAddresses;
