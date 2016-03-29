@@ -284,7 +284,7 @@ void VanetSim::ConfigApp()
 	Ipv4AddressHelper ipv4S;
 	NS_LOG_INFO ("Assign IP Addresses.");
 	ipv4S.SetBase ("10.1.1.0", "255.255.255.0");//SCH
-	m_SCHInterface = ipv4S.Assign (m_SCHDevices);
+	m_SCHInterfaces = ipv4S.Assign (m_SCHDevices);
 	std::cout<<"IPV4S Assigned"<<std::endl;
 
 
@@ -293,8 +293,16 @@ void VanetSim::ConfigApp()
 		Ipv4AddressHelper ipv4C;
 		NS_LOG_INFO ("Assign IP-C Addresses.");
 		ipv4C.SetBase("192.168.0.0","255.255.255.0");//CCH
-		m_CCHInterface = ipv4C.Assign(m_CCHDevices);
+		m_CCHInterfaces = ipv4C.Assign(m_CCHDevices);
 		std::cout<<"IPV4C Assigned"<<std::endl;
+		for (uint32_t i = 0;i<m_nodes.GetN ();++i)
+		  {
+		    std::cout<<"m_nodes.GetN () "<<i<<std::endl;
+		    Ptr<sdn::RoutingProtocol> routing =
+		        m_nodes.Get (i)->GetObject<sdn::RoutingProtocol> ();
+        routing->SetCCHInterface (m_CCHInterfaces.Get (i).second);
+		    routing->SetSCHInterface (m_SCHInterfaces.Get (i).second);
+		  }
 	}
 
 
@@ -302,7 +310,7 @@ void VanetSim::ConfigApp()
 	//source
 
 	//onoff
-	Address remote (InetSocketAddress(m_SCHInterface.GetAddress(nodeNum+2), m_port));
+	Address remote (InetSocketAddress(m_SCHInterfaces.GetAddress(nodeNum+2), m_port));
 	OnOffHelper Source("ns3::UdpSocketFactory",remote);//SendToSink
 	Source.SetAttribute("OffTime",StringValue ("ns3::ConstantRandomVariable[Constant=0.0]"));
 
@@ -318,7 +326,7 @@ void VanetSim::ConfigApp()
 	//sink
 	TypeId tid = TypeId::LookupByName ("ns3::UdpSocketFactory");
 	Ptr<Socket> sink = Socket::CreateSocket (m_nodes.Get(nodeNum+2), tid);//The Sink
-	InetSocketAddress local = InetSocketAddress(m_SCHInterface.GetAddress(nodeNum+2),m_port);
+	InetSocketAddress local = InetSocketAddress(m_SCHInterfaces.GetAddress(nodeNum+2),m_port);
 	sink->Bind(local);
 	sink->SetRecvCallback(MakeCallback(&VanetSim::ReceiveDataPacket, this));
 }

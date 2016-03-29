@@ -75,7 +75,7 @@ private:
 	double duration;
 	NodeContainer m_nodes;//Cars + Controller + Source + Sink
 	NetDeviceContainer m_SCHDevices, m_CCHDevices;
-	Ipv4InterfaceContainer m_SCHInterface, m_CCHInterface;
+	Ipv4InterfaceContainer m_SCHInterfaces, m_CCHInterfaces;
 	//////////TongJi////////////
 	uint32_t Rx_Routing_Bytes, Tx_Routing_Bytes;
 	uint32_t RX_Routing_Pkts, TX_Routing_Pkts;

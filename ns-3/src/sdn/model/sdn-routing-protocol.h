@@ -236,9 +236,6 @@ private:
   /// Check that address is one of my interfaces
   bool IsMyOwnAddress (const Ipv4Address & a) const;//implemented
 
-  void SetSCHinterface (uint32_t interface);
-  void SetCCHinterface (uint32_t interface);
-
 private:
   Ipv4Address m_mainAddress;
   uint32_t m_SCHinterface;

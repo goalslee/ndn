@@ -288,17 +288,18 @@ RoutingProtocol::DoInitialize ()
 void 
 RoutingProtocol::SetCCHInterface (uint32_t interface)
 {
-  std::cout<<"SetCCHInterface"<<std::endl;
+  std::cout<<"SetCCHInterface "<<interface<<std::endl;
   m_mainAddress = m_ipv4->GetAddress (interface, 0).GetLocal ();
-  m_SCHinterface = interface;
+  m_CCHinterface = interface;
+  std::cout<<"SetCCHInterface "<<m_mainAddress.Get ()%256<<std::endl;
 }
 
 void 
 RoutingProtocol::SetSCHInterface (uint32_t interface)
 {
-  std::cout<<"SetSCHInterface"<<std::endl;
-  m_mainAddress = m_ipv4->GetAddress (interface, 0).GetLocal ();
-  m_CCHinterface = interface;
+  std::cout<<"SetSCHInterface "<<interface<<std::endl;
+  m_SCHinterface = interface;
+  std::cout<<"SetSCHInterface "<<m_mainAddress.Get ()%256<<std::endl;
 }
 
 void

@@ -118,7 +118,6 @@ private:
    */
   SdnHelper &operator = (const SdnHelper &o);
   ObjectFactory m_agentFactory;
-  //std::map< Ptr<Node>, Ptr<MobilityModel> > m_mobility;
   std::map< Ptr<Node>, sdn::NodeType > m_ntmap;
   std::map< Ptr<Node>, std::set<uint32_t> > m_interfaceExclusions;
 };
