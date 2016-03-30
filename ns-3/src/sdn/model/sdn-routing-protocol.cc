@@ -294,18 +294,18 @@ RoutingProtocol::DoInitialize ()
 void 
 RoutingProtocol::SetCCHInterface (uint32_t interface)
 {
-  std::cout<<"SetCCHInterface "<<interface<<std::endl;
+  //std::cout<<"SetCCHInterface "<<interface<<std::endl;
   m_mainAddress = m_ipv4->GetAddress (interface, 0).GetLocal ();
   m_CCHinterface = interface;
-  std::cout<<"SetCCHInterface "<<m_mainAddress.Get ()%256<<std::endl;
+  //std::cout<<"SetCCHInterface "<<m_mainAddress.Get ()%256<<std::endl;
 }
 
 void 
 RoutingProtocol::SetSCHInterface (uint32_t interface)
 {
-  std::cout<<"SetSCHInterface "<<interface<<std::endl;
+  //std::cout<<"SetSCHInterface "<<interface<<std::endl;
   m_SCHinterface = interface;
-  std::cout<<"SetSCHInterface "<<m_mainAddress.Get ()%256<<std::endl;
+  //std::cout<<"SetSCHInterface "<<m_mainAddress.Get ()%256<<std::endl;
 }
 
 void
@@ -319,6 +319,9 @@ RoutingProtocol::SetInterfaceExclusions (std::set<uint32_t> exceptions)
 void
 RoutingProtocol::RecvSDN (Ptr<Socket> socket)
 {
+  if (m_mainAddress.Get () % 256 > 50)
+    std::cout<<"RecvSDN"<<m_mainAddress.Get () % 256<<std::endl;
+  //TODO
   Ptr<Packet> receivedPacket;
   Address sourceAddress;
   receivedPacket = socket->RecvFrom (sourceAddress);
@@ -607,14 +610,10 @@ RoutingProtocol::RouteInput(Ptr<const Packet> p,
 {
   NS_LOG_FUNCTION (this << " " << m_ipv4->GetObject<Node> ()->GetId () << " " << header.GetDestination ());
 
+  //std::cout<<m_mainAddress.Get ()%256<<" "<<header.GetDestination ().Get () %256<<std::endl;
   //bool lcb_status = false;
   Ipv4Address dest = header.GetDestination();
   Ipv4Address sour = header.GetSource();
-  //This is not a multicast/unicast routing protocol
-  if (!dest.IsBroadcast())
-    {
-      return false;
-    }
 
   // Consume self-originated packets
   if (IsMyOwnAddress (sour) == true)
@@ -1015,10 +1014,15 @@ RoutingProtocol::ComputeRoute ()
 void
 RoutingProtocol::Do_Init_Compute ()
 {
+  std::cout<<"Partition"<<std::endl;
   Partition ();
+  std::cout<<"SetN_Init"<<std::endl;
   SetN_Init ();
+  std::cout<<"OtherSet_Init"<<std::endl;
   OtherSet_Init ();
+  std::cout<<"SelectNode"<<std::endl;
   SelectNode ();
+  std::cout<<"Do_Init_Compute DONE"<<std::endl;
 }
 
 void
@@ -1047,8 +1051,22 @@ RoutingProtocol::Partition ()
   for (std::map<Ipv4Address, CarInfo>::const_iterator cit = m_lc_info.begin ();
        cit != m_lc_info.end(); ++cit)
     {
+      std::cout<<"GetArea"<<std::endl;//TODO
       m_Sections[GetArea (cit->second.Position)].insert (cit->first);
+      std::cout<<"GetArea DONE"<<std::endl;
     }
+  std::cout<<m_lc_info.size ()<<std::endl;
+  for (int i = 0; i < numArea; ++i)
+    {
+      std::cout<<"Section "<<i<<": ";
+      for (std::set<Ipv4Address>::const_iterator cit = m_Sections[i].begin ();
+           cit != m_Sections[i].end (); ++cit)
+        {
+          std::cout<<cit->Get ()%256<<",";
+        }
+      std::cout<<std::endl;
+    }
+
 }
 
 void
