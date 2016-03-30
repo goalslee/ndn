@@ -111,11 +111,14 @@ RoutingProtocol::RoutingProtocol ()
     m_messageSequenceNumber (SDN_MAX_SEQ_NUM),
     m_helloInterval (Seconds(1)),
     m_rmInterval (Seconds (2)),
+    m_minAPInterval (Seconds (1)),
     m_ipv4 (0),
     m_helloTimer (Timer::CANCEL_ON_DESTROY),
     m_rmTimer (Timer::CANCEL_ON_DESTROY),
+    m_apTimer (Timer::CANCEL_ON_DESTROY),
     m_queuedMessagesTimer (Timer::CANCEL_ON_DESTROY),
     m_nodetype (OTHERS),
+    m_linkEstablished (false),
     m_numArea (0),
     m_isPadding (false),
     m_numAreaVaild (false),
@@ -143,6 +146,8 @@ RoutingProtocol::SetIpv4 (Ptr<Ipv4> ipv4)
     (&RoutingProtocol::SendQueuedMessages, this);
   m_rmTimer.SetFunction
     (&RoutingProtocol::RmTimerExpire, this);
+  m_apTimer.SetFunction
+    (&RoutingProtocol::APTimerExpire, this);
 
   m_packetSequenceNumber = SDN_MAX_SEQ_NUM;
   m_messageSequenceNumber = SDN_MAX_SEQ_NUM;
@@ -281,6 +286,7 @@ RoutingProtocol::DoInitialize ()
     {
       HelloTimerExpire ();
       RmTimerExpire ();
+      APTimerExpire ();
       NS_LOG_DEBUG ("SDN on node (Car) " << m_mainAddress << " started");
     }
 }
@@ -479,6 +485,18 @@ RoutingProtocol::ProcessAppointment (const sdn::MessageHeader &msg)
   const sdn::MessageHeader::Appointment &appointment = msg.GetAppointment ();
   if (IsMyOwnAddress (appointment.ID))
     {
+      std::cout<<"CAR"<<m_mainAddress.Get () % 256<<"ProcessAppointment";
+      switch (appointment.ATField)
+      {
+        case NORMAL:
+          std::cout<<" \"NORMAL\""<<std::endl;
+          break;
+        case FORWARDER:
+          std::cout<<" \"FORWARDER\""<<std::endl;
+          break;
+        default:
+          std::cout<<" ERROR TYPE"<<std::endl;
+      }
       m_appointmentResult = appointment.ATField;
     }
 }
@@ -633,7 +651,8 @@ RoutingProtocol::RouteInput(Ptr<const Packet> p,
           broadcastRoute->SetGateway (dest);//broadcast
           broadcastRoute->SetOutputDevice (m_ipv4->GetNetDevice (m_SCHinterface));
           broadcastRoute->SetSource (sour);
-          ucb (broadcastRoute, p, header);
+          std::cout<<"call ucb"<<std::endl;
+          //ucb (broadcastRoute, p, header);
         }
       return true;
 
@@ -763,9 +782,6 @@ RoutingProtocol::GetMessageSequenceNumber ()
 void
 RoutingProtocol::HelloTimerExpire ()
 {
-  //std::cout<<"HelloTimeExpire "<<m_mainAddress.Get ()%256;
-  //std::cout<<", Time:"<<Simulator::Now().GetSeconds ()<<std::endl;
-
   if (GetType() == CAR)
     {
       SendHello ();
@@ -776,17 +792,17 @@ RoutingProtocol::HelloTimerExpire ()
 void
 RoutingProtocol::RmTimerExpire ()
 {
-  std::cout<<"RmTimerExpire "<<m_mainAddress.Get ()%256;
-  std::cout<<", Time:"<<Simulator::Now().GetSeconds ()<<std::endl;
-
-  if (GetType () == LOCAL_CONTROLLER)
-    {
-      ComputeRoute ();
-      //SendRoutingMessage ();
-      //m_rmTimer.Schedule (m_rmInterval);
-    }
+  //Do nothing.
 }
 
+void
+RoutingProtocol::APTimerExpire ()
+{
+  if (GetType() == LOCAL_CONTROLLER)
+    {
+      ComputeRoute ();
+    }
+}
 
 
 // SDN packets actually send here.
@@ -795,7 +811,6 @@ RoutingProtocol::SendPacket (Ptr<Packet> packet,
                              const MessageList &containedMessages)
 {
   NS_LOG_DEBUG ("SDN node " << m_mainAddress << " sending a SDN packet");
-  //std::cout<<"SendPacket  "<<m_mainAddress.Get ()%256 <<std::endl;
   // Add a header
   sdn::PacketHeader header;
   header.originator = this->m_mainAddress;
@@ -818,8 +833,7 @@ RoutingProtocol::SendPacket (Ptr<Packet> packet,
 void
 RoutingProtocol::QueueMessage (const sdn::MessageHeader &message, Time delay)
 {
-  //std::cout<<"QueueMessage  "<<m_mainAddress.Get ()%256 <<std::endl;
-  m_queuedMessages.push_back (message);
+   m_queuedMessages.push_back (message);
   if (not m_queuedMessagesTimer.IsRunning ())
     {
       m_queuedMessagesTimer.SetDelay (delay);
@@ -902,8 +916,6 @@ RoutingProtocol::SendHello ()
 
   NS_LOG_DEBUG ( "SDN HELLO_MESSAGE sent by node: " << hello.ID
                  << "   at " << now.GetSeconds() << "s");
-  //std::cout<<"SendHello "<<m_mainAddress.Get ()%256 <<"Pos:"<<pos.x<<","<<pos.y<<","<<pos.z;
-  //std::cout<<" Vel:"<<vel.x<<","<<vel.y<<","<<vel.z<<std::endl;
   QueueMessage (msg, JITTER);
 }
 
@@ -967,19 +979,6 @@ RoutingProtocol::SetMobility (Ptr<MobilityModel> mobility)
 void
 RoutingProtocol::SetType (NodeType nt)
 {
-  /*
-  switch (nt)
-  {
-    case CAR:
-      std::cout<<"C"<<std::endl;
-      break;
-    case LOCAL_CONTROLLER:
-      std::cout<<"L"<<std::endl;
-      break;
-    case OTHERS:
-      std::cout<<"O"<<std::endl;
-      break;
-  }*/
   m_nodetype = nt;
 }
 
@@ -992,19 +991,25 @@ RoutingProtocol::GetType () const
 void
 RoutingProtocol::ComputeRoute ()
 {
+  std::cout<<"RemoveTimeOut"<<std::endl;
   RemoveTimeOut (); //Remove Stale Tuple
 
-  if (m_Sections.empty ())
+  if (!m_linkEstablished)
     {
+      std::cout<<"Do_Init_Compute"<<std::endl;
       Do_Init_Compute ();
     }
   else
     {
+      std::cout<<"Do_Update"<<std::endl;
       Do_Update ();
     }
 
+  std::cout<<"SendRoutingMessage"<<std::endl;
   SendRoutingMessage ();
+  std::cout<<"Reschedule"<<std::endl;
   Reschedule ();
+  std::cout<<"CR DONE"<<std::endl;
 }//RoutingProtocol::ComputeRoute
 
 void
@@ -1019,15 +1024,21 @@ RoutingProtocol::Do_Init_Compute ()
 void
 RoutingProtocol::Do_Update ()
 {
+  std::cout<<"ShiftArea"<<std::endl;
   ShiftArea ();
+  std::cout<<"AddNewToZero"<<std::endl;
   AddNewToZero ();
+  std::cout<<"CalcSetZero"<<std::endl;
   CalcSetZero ();
+  std::cout<<"SelectNewNodeInAreaZero"<<std::endl;
   SelectNewNodeInAreaZero ();
+  std::cout<<"Do_Update DONE"<<std::endl;
 }
 
 void
 RoutingProtocol::Partition ()
 {
+  m_Sections.clear ();
   int numArea = GetNumArea();
   for (int i = 0; i < numArea; ++i)
     {
@@ -1147,7 +1158,8 @@ RoutingProtocol::SelectNode ()
 {
   //4-1
   ResetAppointmentResult ();
-  Ipv4Address The_Car;
+  uint32_t thezero = 0;
+  Ipv4Address The_Car(thezero);
   uint32_t minhop_of_tc = INFHOP;
 
   //First Area
@@ -1217,7 +1229,8 @@ RoutingProtocol::CalcSetZero ()
 void
 RoutingProtocol::SelectNewNodeInAreaZero ()
 {
-  Ipv4Address The_Car;
+  uint32_t thezero = 0;
+  Ipv4Address The_Car (thezero);
   uint32_t minhop_of_tc = INFHOP;
   for (std::set<Ipv4Address>::const_iterator cit = m_Sections[0].begin ();
        cit != m_Sections[0].end (); ++cit)
@@ -1259,22 +1272,33 @@ RoutingProtocol::SelectNewNodeInAreaZero ()
 void
 RoutingProtocol::Reschedule ()
 {
-  double vx = m_lc_info[m_theFirstCar].Velocity.x;
-  double px = m_lc_info[m_theFirstCar].GetPos ().x;
-  double t2l;
-  if (vx == 0)
+  if (m_theFirstCar == Ipv4Address::GetZero ())
     {
-      t2l = 1;
+      if (m_apTimer.IsRunning ())
+        {
+          m_apTimer.Remove ();
+        }
+      m_apTimer.Schedule (m_minAPInterval);
     }
   else
     {
-      t2l= (0.5 * SIGNAL_RANGE - px) / vx;
+      double vx = m_lc_info[m_theFirstCar].Velocity.x;
+      double px = m_lc_info[m_theFirstCar].GetPos ().x;
+      double t2l;
+      if (vx == 0)
+        {
+          t2l = 1;
+        }
+      else
+        {
+          t2l= (0.5 * SIGNAL_RANGE - px) / vx;
+        }
+      if (m_apTimer.IsRunning ())
+        {
+          m_apTimer.Remove ();
+        }
+      m_apTimer.Schedule(Seconds(t2l));
     }
-  if (m_rmTimer.IsRunning ())
-    {
-      m_rmTimer.Remove ();
-    }
-  m_rmTimer.Schedule(Seconds(t2l));
 }
 
 ShortHop

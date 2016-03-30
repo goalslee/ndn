@@ -161,6 +161,8 @@ private:
   Time m_helloInterval;
   /// Routing messages' emission interval.
   Time m_rmInterval;
+  /// minimum ap message emission interval
+  Time m_minAPInterval;
 
   Ptr<Ipv4> m_ipv4;
 
@@ -217,6 +219,9 @@ private:
   Timer m_rmTimer;
   void RmTimerExpire ();//implemented
 
+  Timer m_apTimer;
+  void APTimerExpire ();
+
   /// A list of pending messages which are buffered awaiting for being sent.
   sdn::MessageList m_queuedMessages;
   Timer m_queuedMessagesTimer; // timer for throttling outgoing messages
@@ -269,6 +274,7 @@ public:
   NodeType GetType () const; //implemented
 
 private:
+  bool m_linkEstablished;
   std::vector< std::set<Ipv4Address> > m_Sections;
   ShortHop GetShortHop (const Ipv4Address& IDa, const Ipv4Address& IDb);
   void LCAddEntry( const Ipv4Address& ID,
