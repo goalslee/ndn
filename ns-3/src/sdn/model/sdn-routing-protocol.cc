@@ -319,8 +319,8 @@ RoutingProtocol::SetInterfaceExclusions (std::set<uint32_t> exceptions)
 void
 RoutingProtocol::RecvSDN (Ptr<Socket> socket)
 {
-  if (m_mainAddress.Get () % 256 > 50)
-    std::cout<<"RecvSDN"<<m_mainAddress.Get () % 256<<std::endl;
+  //if (m_mainAddress.Get () % 256 > 50)
+  //  std::cout<<"RecvSDN"<<m_mainAddress.Get () % 256<<std::endl;
   //TODO
   Ptr<Packet> receivedPacket;
   Address sourceAddress;
@@ -423,10 +423,10 @@ RoutingProtocol::RecvSDN (Ptr<Socket> socket)
 void
 RoutingProtocol::ProcessHM (const sdn::MessageHeader &msg)
 {
-  std::cout<<m_mainAddress.Get ()%256<<" RoutingProtocol::ProcessHM "
+  /*std::cout<<m_mainAddress.Get ()%256<<" RoutingProtocol::ProcessHM "
       <<msg.GetHello ().ID.Get ()%256<<" m_lc_info size:"
       <<m_lc_info.size ()<<std::endl;
-
+  */
   Ipv4Address ID = msg.GetHello ().ID;
   std::map<Ipv4Address, CarInfo>::iterator it = m_lc_info.find (ID);
 
@@ -488,13 +488,13 @@ RoutingProtocol::ProcessAppointment (const sdn::MessageHeader &msg)
   const sdn::MessageHeader::Appointment &appointment = msg.GetAppointment ();
   if (IsMyOwnAddress (appointment.ID))
     {
-      std::cout<<"CAR"<<m_mainAddress.Get () % 256<<"ProcessAppointment";
       switch (appointment.ATField)
       {
         case NORMAL:
-          std::cout<<" \"NORMAL\""<<std::endl;
+          //std::cout<<" \"NORMAL\""<<std::endl;
           break;
         case FORWARDER:
+          std::cout<<"CAR"<<m_mainAddress.Get () % 256<<"ProcessAppointment";
           std::cout<<" \"FORWARDER\""<<std::endl;
           break;
         default:
@@ -1004,8 +1004,8 @@ RoutingProtocol::ComputeRoute ()
       Do_Update ();
     }
 
-  std::cout<<"SendRoutingMessage"<<std::endl;
-  SendRoutingMessage ();
+  std::cout<<"SendAppointment"<<std::endl;
+  SendAppointment ();
   std::cout<<"Reschedule"<<std::endl;
   Reschedule ();
   std::cout<<"CR DONE"<<std::endl;
@@ -1051,9 +1051,7 @@ RoutingProtocol::Partition ()
   for (std::map<Ipv4Address, CarInfo>::const_iterator cit = m_lc_info.begin ();
        cit != m_lc_info.end(); ++cit)
     {
-      std::cout<<"GetArea"<<std::endl;//TODO
       m_Sections[GetArea (cit->second.Position)].insert (cit->first);
-      std::cout<<"GetArea DONE"<<std::endl;
     }
   std::cout<<m_lc_info.size ()<<std::endl;
   for (int i = 0; i < numArea; ++i)
@@ -1414,6 +1412,7 @@ RoutingProtocol::GetArea (Vector3D position) const
   //0.5r ~ r ~ r ~...~ r ~ r ~ last (if length_of_last<=0.5r, last={0.5r}; else last = {padding_area, 0.5r});
   if (px < 0.5*m_signal_range)
     {
+      //std::cout<<"RET1"<<std::endl;
       return 0;
     }
   else
@@ -1426,6 +1425,7 @@ RoutingProtocol::GetArea (Vector3D position) const
 
       if (numOfTrivialArea_car < numOfTrivialArea)
         {
+          //std::cout<<"RET2"<<std::endl;
           return numOfTrivialArea_car + 1;//Plus First Area;
         }
       else//numOfTrivialArea_car == numOfTrivialArea
@@ -1438,6 +1438,7 @@ RoutingProtocol::GetArea (Vector3D position) const
                */
               if (road_length < m_signal_range)
                 {
+                  //std::cout<<"RET3"<<std::endl;
                   return 1;
                 }
               else
@@ -1447,6 +1448,7 @@ RoutingProtocol::GetArea (Vector3D position) const
                  */
                 if (road_length - px < 0.5 * m_signal_range)
                   {
+                    //std::cout<<"RET4"<<std::endl;
                     return 2;
                   }
                 /*
@@ -1455,10 +1457,11 @@ RoutingProtocol::GetArea (Vector3D position) const
                  */
                 else
                   {
+                    //std::cout<<"RET5"<<std::endl;
                     return 1;
                   }
 
-            }
+            }//==0
           else
             {
               if (last_length < 1e-10) //last_length == 0
@@ -1469,6 +1472,7 @@ RoutingProtocol::GetArea (Vector3D position) const
                        * ~ r ~ 0.5r ~ 0.5r
                        *               ^here
                        */
+                      //std::cout<<"RET6"<<std::endl;
                       return 1 + numOfTrivialArea + 1;
                     }
                   else
@@ -1477,19 +1481,12 @@ RoutingProtocol::GetArea (Vector3D position) const
                        * ~ r ~ 0.5r ~ 0.5r
                        *        ^here
                        */
+                      //std::cout<<"RET7"<<std::endl;
                       return 1 + numOfTrivialArea;
                     }
                 }
               else
-                if (last_length < 0.5 * m_signal_range)
-                  {
-                    /*
-                     * ~ r ~ last
-                     *        ^here;
-                     */
-                    return 1 + numOfTrivialArea + 1;
-                  }
-                else
+                if (last_length > 0.5 * m_signal_range)
                   {
                     if (road_length - px < 0.5 * m_signal_range)
                       {
@@ -1497,6 +1494,7 @@ RoutingProtocol::GetArea (Vector3D position) const
                          * ~ r ~ padding ~ 0.5r
                          *                  ^here
                          */
+                        //std::cout<<"RET8"<<std::endl;
                         return 1 + numOfTrivialArea + 2;
                       }
                     else
@@ -1505,8 +1503,18 @@ RoutingProtocol::GetArea (Vector3D position) const
                          * ~ r ~ padding ~ 0.5r
                          *        ^here
                          */
+                        //std::cout<<"RET9"<<std::endl;
                         return 1 + numOfTrivialArea + 1;
                       }
+                  }
+                else
+                  {
+                    /*
+                     * ~ r ~ last
+                     *        ^here;
+                     */
+                    //std::cout<<"RET10"<<std::endl;
+                    return 1 + numOfTrivialArea + 1;
                   }
             }
         }

@@ -376,7 +376,7 @@ void VanetSim::Run()
 void VanetSim::Look_at_clock()
 {
 	std::cout<<"Now:"<<Simulator::Now().GetSeconds()<<std::endl;
-	Ptr<MobilityModel> Temp = m_nodes.Get (nodeNum)->GetObject<MobilityModel>();
+	/*Ptr<MobilityModel> Temp = m_nodes.Get (nodeNum)->GetObject<MobilityModel>();
   std::cout<<Temp->GetPosition().x<<","<<Temp->GetPosition().y<<","<<Temp->GetPosition().z<<std::endl;
   std::cout<<Temp->GetVelocity().x<<","<<Temp->GetVelocity().y<<","<<Temp->GetVelocity().z<<std::endl;
   Temp = m_nodes.Get (nodeNum+1)->GetObject<MobilityModel>();
@@ -385,6 +385,7 @@ void VanetSim::Look_at_clock()
   Temp = m_nodes.Get (nodeNum+2)->GetObject<MobilityModel>();
   std::cout<<Temp->GetPosition().x<<","<<Temp->GetPosition().y<<","<<Temp->GetPosition().z<<std::endl;
   std::cout<<Temp->GetVelocity().x<<","<<Temp->GetVelocity().y<<","<<Temp->GetVelocity().z<<std::endl;
+  */
 	/*
 	os<<"Now:"<<Simulator::Now().GetSeconds()<<std::endl;
 	Ptr<OutputStreamWrapper> osw = Create<OutputStreamWrapper> (&std::cout);
