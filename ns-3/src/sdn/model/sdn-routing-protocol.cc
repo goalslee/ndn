@@ -239,45 +239,24 @@ RoutingProtocol::DoInitialize ()
   Ipv4Address loopback ("127.0.0.1");
 
   bool canRunSdn = false;
-  for (uint32_t i = 0; i < m_ipv4->GetNInterfaces (); ++i)
+  //Install RecvSDN
+
+  if(m_interfaceExclusions.find (m_CCHinterface) == m_interfaceExclusions.end ())
     {
-      Ipv4Address addr = m_ipv4->GetAddress (i, 0).GetLocal ();
-      if (addr == loopback)
-        continue;
-
-      //Dont Know  
-      /*
-      if (addr != m_mainAddress)
-        {
-          // Create never expiring interface association tuple entries for our
-          // own network interfaces, so that GetMainAddress () works to
-          // translate the node's own interface addresses into the main address.
-          IfaceAssocTuple tuple;
-          tuple.ifaceAddr = addr;
-          tuple.mainAddr = m_mainAddress;
-          AddIfaceAssocTuple (tuple);
-          NS_ASSERT (GetMainAddress (addr) == m_mainAddress);
-        }
-      */
-      
-      // Obvious
-      if(m_interfaceExclusions.find (i) != m_interfaceExclusions.end ())
-        continue;
-
       // Create a socket to listen only on this interface
-      Ptr<Socket> socket = Socket::CreateSocket (GetObject<Node> (), 
+      Ptr<Socket> socket = Socket::CreateSocket (GetObject<Node> (),
                                                  UdpSocketFactory::GetTypeId ());
       // TRUE
       socket->SetAllowBroadcast (true);
-      InetSocketAddress 
-        inetAddr (m_ipv4->GetAddress (i, 0).GetLocal (), SDN_PORT_NUMBER);
+      InetSocketAddress
+        inetAddr (m_ipv4->GetAddress (m_CCHinterface, 0).GetLocal (), SDN_PORT_NUMBER);
       socket->SetRecvCallback (MakeCallback (&RoutingProtocol::RecvSDN,  this));
       if (socket->Bind (inetAddr))
         {
-          NS_FATAL_ERROR ("Failed to bind() OLSR socket");
+          NS_FATAL_ERROR ("Failed to bind() SDN socket");
         }
-      socket->BindToNetDevice (m_ipv4->GetNetDevice (i));
-      m_socketAddresses[socket] = m_ipv4->GetAddress (i, 0);
+      socket->BindToNetDevice (m_ipv4->GetNetDevice (m_CCHinterface));
+      m_socketAddresses[socket] = m_ipv4->GetAddress (m_CCHinterface, 0);
 
       canRunSdn = true;
     }
