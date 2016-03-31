@@ -81,8 +81,6 @@
 #define SDN_MAX_MSGS    64
 
 
-#define ROAD_LENGTH 1000
-#define SIGNAL_RANGE 100
 #define INFHOP 2147483647
 
 namespace ns3 {
@@ -122,11 +120,10 @@ RoutingProtocol::RoutingProtocol ()
     m_numArea (0),
     m_isPadding (false),
     m_numAreaVaild (false),
-    m_road_length (ROAD_LENGTH),
-    m_signal_range (SIGNAL_RANGE)
+    m_road_length (814),//MagicNumber
+    m_signal_range (419)
 {
   m_uniformRandomVariable = CreateObject<UniformRandomVariable> ();
-  Init_NumArea();
 }
 
 RoutingProtocol::~RoutingProtocol ()
@@ -282,6 +279,7 @@ RoutingProtocol::DoInitialize ()
       canRunSdn = true;
     }
 
+  Init_NumArea();
   if(canRunSdn)
     {
       HelloTimerExpire ();
@@ -1048,9 +1046,12 @@ RoutingProtocol::Partition ()
     {
       m_Sections.push_back (std::set<Ipv4Address> ());
     }
+  std::cout<<"CheckPonint1"<<std::endl;
   for (std::map<Ipv4Address, CarInfo>::const_iterator cit = m_lc_info.begin ();
        cit != m_lc_info.end(); ++cit)
     {
+      std::cout<<"cit->first"<<cit->first.Get ()%256<<std::endl;
+      std::cout<<GetArea (cit->second.Position)<<","<<numArea<<std::endl;
       m_Sections[GetArea (cit->second.Position)].insert (cit->first);
     }
   std::cout<<m_lc_info.size ()<<std::endl;
@@ -1191,11 +1192,14 @@ RoutingProtocol::SelectNode ()
     }
   m_theFirstCar = The_Car;
   Ipv4Address ZERO = Ipv4Address::GetZero ();
+  std::cout<<"Chain ";
   while (The_Car != ZERO)
     {
+      std::cout<<The_Car.Get () % 256<<",";
       m_lc_info[The_Car].appointmentResult = FORWARDER;
       The_Car = m_lc_info[The_Car].ID_of_minhop;
     }
+  std::cout<<std::endl;
 }
 
 void
@@ -1307,7 +1311,7 @@ RoutingProtocol::Reschedule ()
         }
       else
         {
-          t2l= (0.5 * SIGNAL_RANGE - px) / vx;
+          t2l= (0.5 * m_signal_range - px) / vx;
         }
       if (m_apTimer.IsRunning ())
         {
@@ -1326,8 +1330,8 @@ RoutingProtocol::GetShortHop(const Ipv4Address& IDa, const Ipv4Address& IDb)
   double const pxa = m_lc_info[IDa].GetPos ().x,
                pxb = m_lc_info[IDb].GetPos ().x;
   // time to b left
-  double const t2bl = (ROAD_LENGTH - pxb) / vxb;
-  if ((pxb - pxa < SIGNAL_RANGE) && (abs((pxb + vxb*t2bl)-(pxa + vxa*t2bl)) < SIGNAL_RANGE))
+  double const t2bl = (m_road_length - pxb) / vxb;
+  if ((pxb - pxa < m_signal_range) && (abs((pxb + vxb*t2bl)-(pxa + vxa*t2bl)) < m_signal_range))
     {
       ShortHop sh;
       sh.nextID = IDb;
@@ -1341,15 +1345,15 @@ RoutingProtocol::GetShortHop(const Ipv4Address& IDa, const Ipv4Address& IDb)
       sh.isTransfer = true;
       sh.t = 0; // Time when connection loss
       sh.hopnumber = INFHOP;
-      if (pxb - pxa < SIGNAL_RANGE)
+      if (pxb - pxa < m_signal_range)
         {
           if (vxb > vxa)
             {
-              sh.t = (SIGNAL_RANGE + pxa - pxb) / (vxb - vxa);
+              sh.t = (m_signal_range + pxa - pxb) / (vxb - vxa);
             }
           else
             {
-              sh.t = (SIGNAL_RANGE + pxb - pxa) / (vxa - vxb);
+              sh.t = (m_signal_range + pxb - pxa) / (vxa - vxb);
             }
         }
       //Find another car
@@ -1366,8 +1370,8 @@ RoutingProtocol::GetShortHop(const Ipv4Address& IDa, const Ipv4Address& IDb)
           double const t2blmt = t2bl - sh.t;
           if ((tpxa<tpxc)&&(tpxc<tpxb))
             {
-              if ((abs((tpxb + vxb*t2blmt)-(tpxc + vxc*t2blmt)) < SIGNAL_RANGE)&&
-                  abs((tpxc + vxc*t2blmt)-(tpxa + vxa*t2blmt)) < SIGNAL_RANGE)
+              if ((abs((tpxb + vxb*t2blmt)-(tpxc + vxc*t2blmt)) < m_signal_range)&&
+                  abs((tpxc + vxc*t2blmt)-(tpxa + vxa*t2blmt)) < m_signal_range)
                 {
                   sh.IDa = IDa;
                   sh.IDb = IDb;
@@ -1412,7 +1416,7 @@ RoutingProtocol::GetArea (Vector3D position) const
   //0.5r ~ r ~ r ~...~ r ~ r ~ last (if length_of_last<=0.5r, last={0.5r}; else last = {padding_area, 0.5r});
   if (px < 0.5*m_signal_range)
     {
-      //std::cout<<"RET1"<<std::endl;
+      std::cout<<"RET1"<<std::endl;
       return 0;
     }
   else
@@ -1425,7 +1429,7 @@ RoutingProtocol::GetArea (Vector3D position) const
 
       if (numOfTrivialArea_car < numOfTrivialArea)
         {
-          //std::cout<<"RET2"<<std::endl;
+          std::cout<<"RET2"<<std::endl;
           return numOfTrivialArea_car + 1;//Plus First Area;
         }
       else//numOfTrivialArea_car == numOfTrivialArea
@@ -1438,7 +1442,7 @@ RoutingProtocol::GetArea (Vector3D position) const
                */
               if (road_length < m_signal_range)
                 {
-                  //std::cout<<"RET3"<<std::endl;
+                  std::cout<<"RET3"<<std::endl;
                   return 1;
                 }
               else
@@ -1448,7 +1452,7 @@ RoutingProtocol::GetArea (Vector3D position) const
                  */
                 if (road_length - px < 0.5 * m_signal_range)
                   {
-                    //std::cout<<"RET4"<<std::endl;
+                    std::cout<<"RET4"<<std::endl;
                     return 2;
                   }
                 /*
@@ -1457,7 +1461,7 @@ RoutingProtocol::GetArea (Vector3D position) const
                  */
                 else
                   {
-                    //std::cout<<"RET5"<<std::endl;
+                    std::cout<<"RET5"<<std::endl;
                     return 1;
                   }
 
@@ -1466,45 +1470,45 @@ RoutingProtocol::GetArea (Vector3D position) const
             {
               if (last_length < 1e-10) //last_length == 0
                 {
-                  if (road_length - px < 0.5 * m_signal_range)
-                    {
-                      /*
-                       * ~ r ~ 0.5r ~ 0.5r
-                       *               ^here
-                       */
-                      //std::cout<<"RET6"<<std::endl;
-                      return 1 + numOfTrivialArea + 1;
-                    }
-                  else
+                  if (road_length - px > 0.5 * m_signal_range)
                     {
                       /*
                        * ~ r ~ 0.5r ~ 0.5r
                        *        ^here
                        */
-                      //std::cout<<"RET7"<<std::endl;
-                      return 1 + numOfTrivialArea;
+                      std::cout<<"RET6"<<std::endl;
+                      return numOfTrivialArea;
+                    }
+                  else
+                    {
+                      /*
+                       * ~ r ~ 0.5r ~ 0.5r
+                       *               ^here
+                       */
+                      std::cout<<"RET7"<<std::endl;
+                      return numOfTrivialArea + 1;//start from zero
                     }
                 }
               else
                 if (last_length > 0.5 * m_signal_range)
                   {
-                    if (road_length - px < 0.5 * m_signal_range)
-                      {
-                        /*
-                         * ~ r ~ padding ~ 0.5r
-                         *                  ^here
-                         */
-                        //std::cout<<"RET8"<<std::endl;
-                        return 1 + numOfTrivialArea + 2;
-                      }
-                    else
+                    if (road_length - px > 0.5 * m_signal_range)
                       {
                         /*
                          * ~ r ~ padding ~ 0.5r
                          *        ^here
                          */
-                        //std::cout<<"RET9"<<std::endl;
-                        return 1 + numOfTrivialArea + 1;
+                        std::cout<<"RET8"<<std::endl;
+                        return numOfTrivialArea + 1;
+                      }
+                    else
+                      {
+                        /*
+                         * ~ r ~ padding ~ 0.5r
+                         *                  ^here
+                         */
+                        std::cout<<"RET9"<<std::endl;
+                        return numOfTrivialArea + 2;
                       }
                   }
                 else
@@ -1513,8 +1517,8 @@ RoutingProtocol::GetArea (Vector3D position) const
                      * ~ r ~ last
                      *        ^here;
                      */
-                    //std::cout<<"RET10"<<std::endl;
-                    return 1 + numOfTrivialArea + 1;
+                    std::cout<<"RET10"<<std::endl;
+                    return numOfTrivialArea + 1;
                   }
             }
         }
@@ -1548,15 +1552,15 @@ RoutingProtocol::Init_NumArea ()
           m_isPadding = true;
         }
       else
-        if (last_length < 0.5*m_signal_range)//0<last_length<0.5r
-          {
-            ret = 1 + numOfTrivialArea + 1;//First Area + TrivialArea + LastArea;
-            m_isPadding = false;
-          }
-        else//<0.5r<last_length<r
+        if (last_length > 0.5*m_signal_range)//0.5r<last_length<r
           {
             ret = 1 + numOfTrivialArea + 2;//First Area + TrivialArea + paddingArea +LastArea;
             m_isPadding = true;
+          }
+        else//0<last_length<0.5r
+          {
+            ret = 1 + numOfTrivialArea + 1;//First Area + TrivialArea + LastArea;
+            m_isPadding = false;
           }
     }
   m_numArea = ret;
@@ -1588,6 +1592,13 @@ RoutingProtocol::RemoveTimeOut()
     {
       m_lc_info.erase((*it));
     }
+}
+
+void
+RoutingProtocol::SetSignalRangeNRoadLength (double signal_range, double road_length)
+{
+  m_signal_range = signal_range;
+  m_road_length = road_length;
 }
 
 } // namespace sdn

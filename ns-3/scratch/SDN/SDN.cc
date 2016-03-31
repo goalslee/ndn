@@ -30,8 +30,8 @@ VanetSim::VanetSim()
 	freq2 = 5.890e9;  //802.11p CCH CH178
 	txp1 = 20;  // dBm SCH
 	txp2 = 20;  // CCH
-	range1 = 800.0;//SCH
-	range2 = 1200.0;//CCH
+	range1 = 400.0;//SCH
+	range2 = 1000.0;//CCH
 	packetSize = 1000; // bytes
 	numPackets = 1;
 	interval = 0.1; // seconds
@@ -272,7 +272,7 @@ void VanetSim::ConfigApp()
 	  sdn.ExcludeInterface (m_nodes.Get (nodeNum), 0);
 	  sdn.SetNodeTypeMap (m_nodes.Get (nodeNum+1), sdn::CAR);//Treat Source and Sink as CAR
 	  sdn.SetNodeTypeMap (m_nodes.Get (nodeNum+2), sdn::CAR);
-
+	  sdn.SetRLnSR (range1, range2);
 	  internet.SetRoutingHelper(sdn);
 		std::cout<<"SetRoutingHelper Done"<<std::endl;
 	}
@@ -297,7 +297,7 @@ void VanetSim::ConfigApp()
 		std::cout<<"IPV4C Assigned"<<std::endl;
 		for (uint32_t i = 0;i<m_nodes.GetN ();++i)
 		  {
-		    std::cout<<"m_nodes.GetN () "<<i<<std::endl;
+		    //std::cout<<"m_nodes.GetN () "<<i<<std::endl;
 		    Ptr<sdn::RoutingProtocol> routing =
 		        m_nodes.Get (i)->GetObject<sdn::RoutingProtocol> ();
         routing->SetCCHInterface (m_CCHInterfaces.Get (i).second);

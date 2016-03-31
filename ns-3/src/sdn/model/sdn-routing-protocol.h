@@ -296,7 +296,10 @@ private:
 
   double m_road_length;
   double m_signal_range;
+public:
+  void SetSignalRangeNRoadLength (double signal_range, double road_length);
 
+private:
   void Do_Init_Compute ();
   void Do_Update ();
   void Reschedule ();
