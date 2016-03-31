@@ -34,6 +34,7 @@
 #include "ns3/ipv4.h"
 #include "ns3/ipv4-routing-protocol.h"
 #include "ns3/mobility-module.h"
+//#include "sdn-duplicate-detection.h"
 
 #include <vector>
 #include <map>
@@ -49,8 +50,10 @@ enum NodeType {CAR, LOCAL_CONTROLLER, OTHERS};
 struct RoutingTableEntry
 {
   RoutingTableEntry () : // default values
-                           destAddr (), nextHop (),
-                           mask(), interface (0) {};
+                           destAddr (uint32_t(0)),
+                           nextHop (uint32_t(0)),
+                           mask (uint32_t(0)),
+                           interface (0) {};
 
   Ipv4Address destAddr; ///< Address of the destination subnet.
   Ipv4Address nextHop; ///< Address of the next hop.
@@ -62,6 +65,14 @@ struct RoutingTableEntry
 class CarInfo
 {
 public:
+
+  CarInfo () :
+    Active (false)
+  {
+    minhop = INFINITY;
+    ID_of_minhop = Ipv4Address::GetZero ();
+    appointmentResult = AppointmentType::NORMAL;
+  };
 
   //Get position by this time
   Vector3D GetPos () const
@@ -84,6 +95,17 @@ public:
 
 struct ShortHop
 {
+  ShortHop ()
+  {
+    hopnumber = INFINITY;
+    isTransfer = false;
+    nextID = Ipv4Address::GetZero ();
+    IDa = Ipv4Address::GetZero ();
+    IDb = Ipv4Address::GetZero ();
+    proxyID = Ipv4Address::GetZero ();
+    t = 0;
+  };
+
   Ipv4Address nextID;
   uint32_t hopnumber;
   bool isTransfer;
@@ -324,6 +346,7 @@ private:
   void SelectNewNodeInAreaZero ();
 
   Ipv4Address m_theFirstCar;//Use by Reschedule (), SelectNewNodeInAreaZero(); Assign by SelectNode ();
+  //Duplicate_Detection m_duplicate_detection;
 };
 
 

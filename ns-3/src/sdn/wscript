@@ -6,6 +6,7 @@ def build(bld):
     module.source = [
         'model/sdn-header.cc',
         'model/sdn-routing-protocol.cc',
+        'model/sdn-duplicate-detection.cc',
         'helper/sdn-helper.cc',
         ]
 
@@ -16,6 +17,7 @@ def build(bld):
     headers.source = [
         'model/sdn-routing-protocol.h',
         'model/sdn-header.h',
+        'model/sdn-duplicate-detection.h',
         'helper/sdn-helper.h',
         ]
 

@@ -314,8 +314,8 @@ void VanetSim::ConfigApp()
 	OnOffHelper Source("ns3::UdpSocketFactory",remote);//SendToSink
 	Source.SetAttribute("OffTime",StringValue ("ns3::ConstantRandomVariable[Constant=0.0]"));
 
-	m_source = Source.Install(m_nodes.Get(nodeNum+1));//Insatll on Source
-	m_source.Stop(Seconds(duration));//Default Start time is 0.
+	//m_source = Source.Install(m_nodes.Get(nodeNum+1));//Insatll on Source
+	//m_source.Stop(Seconds(duration));//Default Start time is 0.
 
 	/*
 	TypeId tid = TypeId::LookupByName ("ns3::UdpSocketFactory");

@@ -115,7 +115,10 @@ RoutingProtocol::RoutingProtocol ()
     m_rmTimer (Timer::CANCEL_ON_DESTROY),
     m_apTimer (Timer::CANCEL_ON_DESTROY),
     m_queuedMessagesTimer (Timer::CANCEL_ON_DESTROY),
+    m_SCHinterface (0),
+    m_CCHinterface (0),
     m_nodetype (OTHERS),
+    m_appointmentResult (NORMAL),
     m_linkEstablished (false),
     m_numArea (0),
     m_isPadding (false),
@@ -319,7 +322,6 @@ RoutingProtocol::RecvSDN (Ptr<Socket> socket)
 {
   //if (m_mainAddress.Get () % 256 > 50)
   //  std::cout<<"RecvSDN"<<m_mainAddress.Get () % 256<<std::endl;
-  //TODO
   Ptr<Packet> receivedPacket;
   Address sourceAddress;
   receivedPacket = socket->RecvFrom (sourceAddress);
@@ -607,7 +609,7 @@ RoutingProtocol::RouteInput(Ptr<const Packet> p,
                             ErrorCallback ecb)
 {
   NS_LOG_FUNCTION (this << " " << m_ipv4->GetObject<Node> ()->GetId () << " " << header.GetDestination ());
-
+  //TODO
   //std::cout<<m_mainAddress.Get ()%256<<" "<<header.GetDestination ().Get () %256<<std::endl;
   //bool lcb_status = false;
   Ipv4Address dest = header.GetDestination();
@@ -625,7 +627,7 @@ RoutingProtocol::RouteInput(Ptr<const Packet> p,
   if (m_ipv4->IsDestinationAddress (dest, iif))
     {
       //Duplicate Detection. TODO
-
+      //if (m_duplicate_detection.CheckThis ())
       //Local delivery
       if (!lcb.IsNull ())
         {
@@ -1050,8 +1052,8 @@ RoutingProtocol::Partition ()
   for (std::map<Ipv4Address, CarInfo>::const_iterator cit = m_lc_info.begin ();
        cit != m_lc_info.end(); ++cit)
     {
-      std::cout<<"cit->first"<<cit->first.Get ()%256<<std::endl;
-      std::cout<<GetArea (cit->second.Position)<<","<<numArea<<std::endl;
+      //std::cout<<"cit->first"<<cit->first.Get ()%256<<std::endl;
+      //std::cout<<GetArea (cit->second.Position)<<","<<numArea<<std::endl;
       m_Sections[GetArea (cit->second.Position)].insert (cit->first);
     }
   std::cout<<m_lc_info.size ()<<std::endl;
@@ -1416,7 +1418,7 @@ RoutingProtocol::GetArea (Vector3D position) const
   //0.5r ~ r ~ r ~...~ r ~ r ~ last (if length_of_last<=0.5r, last={0.5r}; else last = {padding_area, 0.5r});
   if (px < 0.5*m_signal_range)
     {
-      std::cout<<"RET1"<<std::endl;
+      //std::cout<<"RET1"<<std::endl;
       return 0;
     }
   else
@@ -1429,7 +1431,7 @@ RoutingProtocol::GetArea (Vector3D position) const
 
       if (numOfTrivialArea_car < numOfTrivialArea)
         {
-          std::cout<<"RET2"<<std::endl;
+          //std::cout<<"RET2"<<std::endl;
           return numOfTrivialArea_car + 1;//Plus First Area;
         }
       else//numOfTrivialArea_car == numOfTrivialArea
@@ -1442,7 +1444,7 @@ RoutingProtocol::GetArea (Vector3D position) const
                */
               if (road_length < m_signal_range)
                 {
-                  std::cout<<"RET3"<<std::endl;
+                  //std::cout<<"RET3"<<std::endl;
                   return 1;
                 }
               else
@@ -1452,7 +1454,7 @@ RoutingProtocol::GetArea (Vector3D position) const
                  */
                 if (road_length - px < 0.5 * m_signal_range)
                   {
-                    std::cout<<"RET4"<<std::endl;
+                    //std::cout<<"RET4"<<std::endl;
                     return 2;
                   }
                 /*
@@ -1461,7 +1463,7 @@ RoutingProtocol::GetArea (Vector3D position) const
                  */
                 else
                   {
-                    std::cout<<"RET5"<<std::endl;
+                    //std::cout<<"RET5"<<std::endl;
                     return 1;
                   }
 
@@ -1476,7 +1478,7 @@ RoutingProtocol::GetArea (Vector3D position) const
                        * ~ r ~ 0.5r ~ 0.5r
                        *        ^here
                        */
-                      std::cout<<"RET6"<<std::endl;
+                      //std::cout<<"RET6"<<std::endl;
                       return numOfTrivialArea;
                     }
                   else
@@ -1485,7 +1487,7 @@ RoutingProtocol::GetArea (Vector3D position) const
                        * ~ r ~ 0.5r ~ 0.5r
                        *               ^here
                        */
-                      std::cout<<"RET7"<<std::endl;
+                      //std::cout<<"RET7"<<std::endl;
                       return numOfTrivialArea + 1;//start from zero
                     }
                 }
@@ -1498,7 +1500,7 @@ RoutingProtocol::GetArea (Vector3D position) const
                          * ~ r ~ padding ~ 0.5r
                          *        ^here
                          */
-                        std::cout<<"RET8"<<std::endl;
+                        //std::cout<<"RET8"<<std::endl;
                         return numOfTrivialArea + 1;
                       }
                     else
@@ -1507,7 +1509,7 @@ RoutingProtocol::GetArea (Vector3D position) const
                          * ~ r ~ padding ~ 0.5r
                          *                  ^here
                          */
-                        std::cout<<"RET9"<<std::endl;
+                        //std::cout<<"RET9"<<std::endl;
                         return numOfTrivialArea + 2;
                       }
                   }
@@ -1517,7 +1519,7 @@ RoutingProtocol::GetArea (Vector3D position) const
                      * ~ r ~ last
                      *        ^here;
                      */
-                    std::cout<<"RET10"<<std::endl;
+                    //std::cout<<"RET10"<<std::endl;
                     return numOfTrivialArea + 1;
                   }
             }
