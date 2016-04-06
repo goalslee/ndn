@@ -114,6 +114,7 @@ RoutingProtocol::RoutingProtocol ()
     m_helloTimer (Timer::CANCEL_ON_DESTROY),
     m_rmTimer (Timer::CANCEL_ON_DESTROY),
     m_apTimer (Timer::CANCEL_ON_DESTROY),
+    m_firstsendTimer(Timer::CANCEL_ON_DESTROY),
     m_queuedMessagesTimer (Timer::CANCEL_ON_DESTROY),
     m_SCHinterface (0),
     m_CCHinterface (0),
@@ -148,6 +149,8 @@ RoutingProtocol::SetIpv4 (Ptr<Ipv4> ipv4)
     (&RoutingProtocol::RmTimerExpire, this);
   m_apTimer.SetFunction
     (&RoutingProtocol::APTimerExpire, this);
+  m_firstsendTimer.SetFunction
+    (&RoutingProtocol::FirstTimerExpire, this);
 
   m_packetSequenceNumber = SDN_MAX_SEQ_NUM;
   m_messageSequenceNumber = SDN_MAX_SEQ_NUM;
@@ -264,9 +267,10 @@ RoutingProtocol::DoInitialize ()
   Init_NumArea();
   if(canRunSdn)
     {
-      HelloTimerExpire ();
-      RmTimerExpire ();
-      APTimerExpire ();
+      //HelloTimerExpire ();
+      //RmTimerExpire ();
+      //APTimerExpire ();
+      FirstTimerExpire();
       NS_LOG_DEBUG ("SDN on node (Car) " << m_mainAddress << " started");
     }
 }
@@ -312,7 +316,7 @@ RoutingProtocol::RecvSDN (Ptr<Socket> socket)
   NS_LOG_DEBUG ("SDN node " << m_mainAddress
                 << " received a SDN packet from "
                 << senderIfaceAddr << " to " << receiverIfaceAddr);
-
+  std::cout<<"SDN node " << m_mainAddress<<" received a SDN packet from "<<senderIfaceAddr<<" to "<<receiverIfaceAddr<<std::endl;
   // All routing messages are sent from and to port RT_PORT,
   // so we check it.
   NS_ASSERT (inetSourceAddr.GetPort () == SDN_PORT_NUMBER);
@@ -388,7 +392,22 @@ RoutingProtocol::RecvSDN (Ptr<Socket> socket)
           if (GetType() == CAR)
             ProcessAppointment (messageHeader);
           break;
-
+        case sdn::MessageHeader::AODV_ROUTING_MESSAGE:  //add this for aodv
+            NS_LOG_DEBUG (Simulator::Now ().GetSeconds ()
+                          << "s SDN node " << m_mainAddress
+                          << " received Aodv Routing message of size "
+                          << messageHeader.GetSerializedSize ());
+          //if(GetType()==LOCAL_CONTROLLER)
+        	  ProcessAodvRm(messageHeader);
+        	  break;
+        case sdn::MessageHeader::AODV_REVERSE_MESSAGE:  //add this for aodv
+            NS_LOG_DEBUG (Simulator::Now ().GetSeconds ()
+                          << "s SDN node " << m_mainAddress
+                          << " received Aodv Routing message of size "
+                          << messageHeader.GetSerializedSize ());
+            if(GetType()==LOCAL_CONTROLLER)
+            	ProcessAodvRERm(messageHeader);
+           break;
         default:
           NS_LOG_DEBUG ("SDN message type " <<
                         int (messageHeader.GetMessageType ()) <<
@@ -760,6 +779,7 @@ RoutingProtocol::GetMessageSequenceNumber ()
 void
 RoutingProtocol::HelloTimerExpire ()
 {
+  std::cout<<"HelloTimerExpire"<<std::endl;
   if (GetType() == CAR)
     {
       SendHello ();
@@ -780,6 +800,62 @@ RoutingProtocol::APTimerExpire ()
     {
       ComputeRoute ();
     }
+}
+
+
+void
+RoutingProtocol::AodvTimerExpire()
+{
+	std::cout<<"AodvTimerExpire "<<m_mainAddress.Get()%256;
+	std::cout<<", Time:"<<Simulator::Now().GetSeconds ()<<std::endl;
+	Aodv_sendback();
+}
+
+void
+RoutingProtocol::FirstTimerExpire()
+{
+	std::cout<<"FirstTimerExpire "<<m_mainAddress.Get()%256<<std::endl;
+	sendfirstpackage();
+}
+
+void
+RoutingProtocol::sendfirstpackage()
+{
+	NS_LOG_DEBUG ("SDN node " << m_mainAddress << " sending a first packet");
+	std::cout<<"SDN node " << m_mainAddress <<std::endl;
+	 sdn::MessageHeader mesg;
+	 m_sourceId=m_mainAddress;
+      Ipv4Address des;
+      des.Set("192.168.0.30");
+
+      Ipv4Address sour;
+     sour.Set("192.168.0.1");
+
+      Ipv4Address mask_temp;
+      mask_temp.Set("255.255.255.0");
+      if(m_mainAddress==sour){
+		 //m_incomeParm.jumpnums=aodvrm.jump_nums;
+		 //m_incomeParm.stability=aodvrm.stability;
+		 //m_ForwardTable.clear();
+		 //m_ForwardTable=aodvrm.forwarding_table;
+         std::cout<<" sending a first packet"<<std::endl;
+		 mesg.SetMessageType(sdn::MessageHeader::AODV_ROUTING_MESSAGE);
+		  Time now = Simulator::Now ();
+		  mesg.SetVTime (m_helloInterval);
+		  mesg.SetTimeToLive (1234);
+		  mesg.SetMessageSequenceNumber (GetMessageSequenceNumber ());
+		  sdn::MessageHeader::AodvRm &Aodvrm = mesg.GetAodvRm();
+		  Aodvrm.ID=m_sourceId;
+		  Aodvrm.DesId=des;
+		  Aodvrm.mask=mask_temp.Get();
+
+		  Aodvrm.jump_nums=1;
+		  Aodvrm.SetStability(m_selfParm.stability);
+		  Aodvrm.forwarding_table =m_ForwardTable;
+		  Aodvrm.forwarding_table.push_back(m_mainAddress.Get());//to-do  m_mainAddress is lc's control channel id?
+		  //size?
+		  QueueMessage (mesg, JITTER);
+      }
 }
 
 
@@ -894,6 +970,7 @@ RoutingProtocol::SendHello ()
 
   NS_LOG_DEBUG ( "SDN HELLO_MESSAGE sent by node: " << hello.ID
                  << "   at " << now.GetSeconds() << "s");
+
   QueueMessage (msg, JITTER);
 }
 
@@ -947,6 +1024,113 @@ RoutingProtocol::SendAppointment ()
       QueueMessage (msg, JITTER);
     }
 }
+
+
+void
+RoutingProtocol::SetAodvParm(uint32_t jump,float sta)
+{
+	m_selfParm.jumpnums=jump;
+	m_selfParm.stability=sta;
+}
+void
+RoutingProtocol::GetAodvParm(uint32_t &jump,float &sta)
+{
+	jump=m_selfParm.jumpnums;
+	sta=m_selfParm.stability;
+}
+
+void
+RoutingProtocol::ProcessAodvRm(const MessageHeader &msg)
+{
+
+	 sdn::MessageHeader mesg;
+	 bool isDes=false;
+	 const sdn::MessageHeader::AodvRm &aodvrm = msg.GetAodvRm();
+	 m_sourceId=aodvrm.ID;
+	 if(aodvrm.DesId==m_mainAddress){
+	     std::cout<<"I am des"<<std::endl;
+		 isDes=true;
+		 m_aodvTimer.SetDelay(FemtoSeconds (5));// 5s countdown
+		 m_aodvTimer.SetFunction
+		    (&RoutingProtocol::AodvTimerExpire, this);
+
+	 }
+	 
+	 std::cout<<"aodvrm.jump_nums  "<<aodvrm.jump_nums<<std::endl;
+	 std::cout<<"m_incomeParm.jumpnums  "<< m_incomeParm.jumpnums<<std::endl;
+	 std::cout<<"aodvrm.GetStability()  "<< aodvrm.GetStability()<<std::endl;
+	 std::cout<<"m_incomeParm.stability  " <<m_incomeParm.stability<<std::endl;
+	 
+	 if(aodvrm.jump_nums<m_incomeParm.jumpnums||(aodvrm.jump_nums==m_incomeParm.jumpnums&& aodvrm.GetStability() < m_incomeParm.stability)){//forward this packet
+		 m_incomeParm.jumpnums=aodvrm.jump_nums;
+		 m_incomeParm.stability=aodvrm.stability;
+		 m_ForwardTable.clear();
+		 m_ForwardTable=aodvrm.forwarding_table;
+		 if(!isDes){
+		 std::cout<<"forwarding..."<<std::endl;
+		 mesg.SetMessageType(sdn::MessageHeader::AODV_ROUTING_MESSAGE);
+		  Time now = Simulator::Now ();
+		  mesg.SetVTime (m_helloInterval);
+		  mesg.SetTimeToLive (1234);
+		  mesg.SetMessageSequenceNumber (GetMessageSequenceNumber ());
+		  sdn::MessageHeader::AodvRm &Aodvrm = mesg.GetAodvRm();
+		  Aodvrm.ID=m_sourceId;
+		  Aodvrm.DesId=aodvrm.DesId;
+		  Aodvrm.mask=aodvrm.mask;
+		  Aodvrm.jump_nums=m_incomeParm.jumpnums+m_selfParm.jumpnums;
+		  Aodvrm.SetStability(m_incomeParm.stability>m_selfParm.stability?m_incomeParm.stability:m_selfParm.stability);
+		  Aodvrm.forwarding_table =m_ForwardTable;
+		  Aodvrm.forwarding_table.push_back(m_mainAddress.Get());//to-do  m_mainAddress is lc's control channel id?
+		  //size?
+		  
+		  auto iterator = Aodvrm.forwarding_table.begin();
+		  auto iter_end = Aodvrm.forwarding_table.end();
+		  for(;iterator!=iter_end;iterator++){
+		     std::cout<<*iterator<<"-> ";
+		     }
+		    std::cout<<std::endl;
+		  QueueMessage (mesg, JITTER);
+		 }
+		 else{
+
+		 }
+	 }
+}
+
+
+
+void RoutingProtocol::ProcessAodvRERm(const sdn::MessageHeader &msg) //for each lc received Reverse message
+{
+
+}
+
+
+void RoutingProtocol::Aodv_sendback()  //for des lc send back
+{
+    std::cout<<"send back"<<std::endl;
+	sdn::MessageHeader msg;
+	 msg.SetMessageType(sdn::MessageHeader::AODV_REVERSE_MESSAGE);
+	  Time now = Simulator::Now ();
+	  msg.SetVTime (m_helloInterval);
+	  msg.SetTimeToLive (1234);
+	  msg.SetMessageSequenceNumber (GetMessageSequenceNumber ());
+	  sdn::MessageHeader::AodvRm &Aodvrm = msg.GetAodvRm();
+	  Aodvrm.ID=m_mainAddress;
+	  Aodvrm.DesId=m_sourceId;
+	  Aodvrm.mask=0;
+	  Aodvrm.jump_nums=0;
+	  Aodvrm.SetStability(0);
+	  //size?
+	  Aodvrm.forwarding_table =m_ForwardTable;
+	  Aodvrm.forwarding_table.push_back(m_mainAddress.Get());//  m_mainAddress is lc's control channel id
+	  QueueMessage (msg, JITTER);
+}
+
+
+
+
+
+
 
 void
 RoutingProtocol::SetMobility (Ptr<MobilityModel> mobility)

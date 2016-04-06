@@ -124,6 +124,8 @@ public:
   enum MessageType {
     HELLO_MESSAGE,
     ROUTING_MESSAGE,
+    AODV_ROUTING_MESSAGE , //for aodv routing
+    AODV_REVERSE_MESSAGE,
     APPOINTMENT_MESSAGE
   };
 
@@ -330,6 +332,68 @@ public:
     uint32_t Deserialize (Buffer::Iterator start, uint32_t messageSize);
   };
 
+
+ //  Aodv Routing Message Format
+  //
+  //    The proposed format of a aodv routing message is as follows:
+  //
+  //        0                   1                   2                   3
+  //        0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+  //       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  //       |                Aodv Routing Message Size                      |
+  //       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  //       |                      sourceAddress(ID)                        | //first send node id
+  //       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  //       |                          destAddress                          |
+  //       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  //       |                             Mask                              |
+  //       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  //       |                            jump numbers                       |
+  //       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  //       |                          stablity                             |
+  //       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  //       |                         vector<ipv4> forwarding table         |
+  //       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+
+  struct AodvRm
+  {
+
+
+	    uint32_t routingMessageSize;
+	    void SetRoutingMessageSize(uint32_t rms)
+	    {
+	      this->routingMessageSize = rms;
+	    }
+	    uint32_t GetRoutingMessageSize() const
+	    {
+	      return (this->routingMessageSize);
+	    }
+
+	    Ipv4Address ID;//sourceAddress
+	    Ipv4Address DesId;
+	    uint32_t mask;
+	    uint32_t jump_nums;
+	    uint32_t stability;
+	    std::vector<uint32_t> forwarding_table;//first transfer ipv4 to unsigned int
+	    //std::vector<uint32_t> temp_forwarding_table;//for save received forwarding table;
+	    void SetStability(float stab)
+	    {
+	      stability = IEEE754(stab);
+	    }
+	    float GetStability(void) const
+	    {
+	      return rIEEE754(stability);
+	    }
+	    //void Print (std::ostream &os) const;
+	    uint32_t GetSerializedSize (void) const;
+	    void Serialize (Buffer::Iterator start) const;
+	    uint32_t Deserialize (Buffer::Iterator start, uint32_t messageSize);
+  };
+
+
+
+
   //  Appointment Message Format
   //    One Appointment is for one car only.
   //    The proposed format of a appointment message is as follows:
@@ -359,6 +423,7 @@ private:
   {
     Hello hello;
     Rm rm;
+    AodvRm aodvrm;
     Appointment appointment;
   } m_message; // union not allowed
 
@@ -403,6 +468,19 @@ public:
     return (m_message.appointment);
   }
 
+  AodvRm& GetAodvRm ()
+  {
+    if (m_messageType == 0)
+      {
+        m_messageType = AODV_ROUTING_MESSAGE;
+      }
+    else
+      {
+        NS_ASSERT (m_messageType == AODV_ROUTING_MESSAGE);
+      }
+    return (m_message.aodvrm);
+  }
+
   const Hello& GetHello () const
   {
     NS_ASSERT (m_messageType == HELLO_MESSAGE);
@@ -413,6 +491,12 @@ public:
   {
     NS_ASSERT (m_messageType == ROUTING_MESSAGE);
     return (m_message.rm);
+  }
+
+ const AodvRm& GetAodvRm () const
+  {
+    NS_ASSERT (m_messageType == AODV_ROUTING_MESSAGE);
+    return (m_message.aodvrm);
   }
 
   const Appointment& GetAppointment () const

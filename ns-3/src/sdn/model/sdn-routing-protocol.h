@@ -113,6 +113,13 @@ struct ShortHop
   double t; //in secends
 };
 
+struct AodvParm //for LC itself
+{
+	uint32_t jumpnums;
+	float stability;
+	std::vector<uint32_t> forwarding_table;
+};
+
 class RoutingProtocol;
 
 /// \brief SDN routing protocol for IPv4
@@ -171,6 +178,12 @@ private:
   std::map<Ipv4Address, RoutingTableEntry> m_table; ///< Data structure for the routing table. (Use By Mainly by CAR Node, but LC needs it too)
 
   std::map<Ipv4Address, CarInfo> m_lc_info;///for LC
+
+  //std::map<Ipv4Address,AodvParm> m_AodvParm;//keep other lc's parm
+  Ipv4Address m_sourceId;
+  AodvParm m_selfParm{1,1};//lc'self parameter
+  AodvParm m_incomeParm{1,1000};// received parameter
+  std::vector<uint32_t> m_ForwardTable;
 
   EventGarbageCollector m_events;
 	
@@ -244,6 +257,16 @@ private:
   Timer m_apTimer;
   void APTimerExpire ();
 
+  Timer m_aodvTimer;
+  void  AodvTimerExpire();
+
+  Timer m_firstsendTimer;
+  void FirstTimerExpire ();//implemented
+
+  void sendfirstpackage();
+
+  void Aodv_sendback();
+
   /// A list of pending messages which are buffered awaiting for being sent.
   sdn::MessageList m_queuedMessages;
   Timer m_queuedMessagesTimer; // timer for throttling outgoing messages
@@ -257,6 +280,11 @@ private:
   void ProcessAppointment (const sdn::MessageHeader &msg);
   void ProcessRm (const sdn::MessageHeader &msg);//implemented
   void ProcessHM (const sdn::MessageHeader &msg); //implemented
+
+  void ProcessAodvRm(const sdn::MessageHeader &msg);
+  void ProcessAodvRERm(const sdn::MessageHeader &msg);
+  void SetAodvParm(uint32_t jump,float sta);
+  void GetAodvParm(uint32_t &jump,float &sta);
 
   void ComputeRoute ();//
 
