@@ -267,9 +267,9 @@ RoutingProtocol::DoInitialize ()
   Init_NumArea();
   if(canRunSdn)
     {
-      //HelloTimerExpire ();
-      //RmTimerExpire ();
-      //APTimerExpire ();
+      HelloTimerExpire ();
+      RmTimerExpire ();
+      APTimerExpire ();
       FirstTimerExpire();
       NS_LOG_DEBUG ("SDN on node (Car) " << m_mainAddress << " started");
     }
