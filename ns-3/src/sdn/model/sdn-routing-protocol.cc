@@ -267,7 +267,7 @@ RoutingProtocol::DoInitialize ()
   Init_NumArea();
   if(canRunSdn)
     {
-      HelloTimerExpire ();
+      //HelloTimerExpire ();
       RmTimerExpire ();
       APTimerExpire ();
       FirstTimerExpire();
@@ -826,7 +826,7 @@ RoutingProtocol::sendfirstpackage()
 	 sdn::MessageHeader mesg;
 	 m_sourceId=m_mainAddress;
       Ipv4Address des;
-      des.Set("192.168.0.30");
+      des.Set("192.168.0.53");
 
       Ipv4Address sour;
      sour.Set("192.168.0.1");
@@ -1047,16 +1047,19 @@ RoutingProtocol::ProcessAodvRm(const MessageHeader &msg)
 	 bool isDes=false;
 	 const sdn::MessageHeader::AodvRm &aodvrm = msg.GetAodvRm();
 	 m_sourceId=aodvrm.ID;
+	 std::cout<<"ip:"<<aodvrm.DesId<<" "<<m_mainAddress<<std::endl;
+
 	 if(aodvrm.DesId==m_mainAddress){
 	     std::cout<<"I am des"<<std::endl;
 		 isDes=true;
 		 m_aodvTimer.SetDelay(FemtoSeconds (5));// 5s countdown
 		 m_aodvTimer.SetFunction
 		    (&RoutingProtocol::AodvTimerExpire, this);
+		 m_aodvTimer.Schedule (FemtoSeconds (1));
 
 	 }
-	 
-	 std::cout<<"aodvrm.jump_nums  "<<aodvrm.jump_nums<<std::endl;
+	 //std::cout<<"ii"<<std::endl;
+	 std::cout<<"aodvrm.jump_num  "<<aodvrm.jump_nums<<std::endl;
 	 std::cout<<"m_incomeParm.jumpnums  "<< m_incomeParm.jumpnums<<std::endl;
 	 std::cout<<"aodvrm.GetStability()  "<< aodvrm.GetStability()<<std::endl;
 	 std::cout<<"m_incomeParm.stability  " <<m_incomeParm.stability<<std::endl;
@@ -1114,15 +1117,18 @@ void RoutingProtocol::Aodv_sendback()  //for des lc send back
 	  msg.SetVTime (m_helloInterval);
 	  msg.SetTimeToLive (1234);
 	  msg.SetMessageSequenceNumber (GetMessageSequenceNumber ());
-	  sdn::MessageHeader::AodvRm &Aodvrm = msg.GetAodvRm();
-	  Aodvrm.ID=m_mainAddress;
-	  Aodvrm.DesId=m_sourceId;
-	  Aodvrm.mask=0;
-	  Aodvrm.jump_nums=0;
-	  Aodvrm.SetStability(0);
+	  sdn::MessageHeader::Aodv_R_Rm &Aodv_r_rm = msg.GetAodv_R_Rm();
+	  Aodv_r_rm.ID=m_mainAddress;
+	  Aodv_r_rm.DesId=m_sourceId;
+	  Aodv_r_rm.mask=0;
+	  Aodv_r_rm.jump_nums=0;
+	  Aodv_r_rm.SetStability(0);
 	  //size?
-	  Aodvrm.forwarding_table =m_ForwardTable;
-	  Aodvrm.forwarding_table.push_back(m_mainAddress.Get());//  m_mainAddress is lc's control channel id
+	  Aodv_r_rm.forwarding_table =m_ForwardTable;
+	  Aodv_r_rm.forwarding_table.push_back(m_mainAddress.Get());//  m_mainAddress is lc's control channel id
+
+
+
 	  QueueMessage (msg, JITTER);
 }
 

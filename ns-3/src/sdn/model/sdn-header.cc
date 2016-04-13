@@ -175,6 +175,9 @@ MessageHeader::GetSerializedSize (void) const
     case AODV_ROUTING_MESSAGE:
       size +=m_message.aodvrm.GetSerializedSize();
       break;
+    case AODV_REVERSE_MESSAGE:
+      size +=m_message.aodv_r_rm.GetSerializedSize();
+      break;
     default:
       NS_ASSERT (false);
     }
@@ -211,6 +214,9 @@ MessageHeader::Serialize (Buffer::Iterator start) const
     case AODV_ROUTING_MESSAGE:
       m_message.aodvrm.Serialize(i);
     break;
+    case AODV_REVERSE_MESSAGE:
+      m_message.aodv_r_rm.Serialize(i);
+      break;
     default:
       NS_ASSERT (false);
     }
@@ -247,6 +253,10 @@ MessageHeader::Deserialize (Buffer::Iterator start)
       size +=
         m_message.aodvrm.Deserialize (i, m_messageSize - SDN_MSG_HEADER_SIZE);
       break;
+    case AODV_REVERSE_MESSAGE:
+        size +=
+          m_message.aodvrm.Deserialize (i, m_messageSize - SDN_MSG_HEADER_SIZE);
+        break;
     default:
       NS_ASSERT (false);
     }
@@ -401,6 +411,67 @@ for(auto iter=forwarding_table.begin();iter!=forwarding_table.end();iter++){
 
 uint32_t
 MessageHeader::AodvRm::Deserialize (Buffer::Iterator start,
+  uint32_t messageSize)
+{
+  Buffer::Iterator i = start;
+
+  //this->routingTables.clear ();
+  NS_ASSERT (messageSize >= SDN_AODVRM_HEADER_SIZE);
+
+  this->routingMessageSize = i.ReadNtohU32 ();
+  uint32_t add_temp = i.ReadNtohU32();
+  this->ID.Set(add_temp);
+  this->DesId.Set(i.ReadNtohU32());
+  this->mask=i.ReadNtohU32();
+  this->jump_nums=i.ReadNtohU32();
+  this->stability=i.ReadNtohU32();
+
+  //NS_ASSERT ((messageSize - SDN_RM_HEADER_SIZE) %
+    //(IPV4_ADDRESS_SIZE * SDN_RM_TUPLE_SIZE) == 0);
+
+  int sizevector = (messageSize - SDN_AODVRM_HEADER_SIZE)/4;
+   // / (IPV4_ADDRESS_SIZE * SDN_RM_TUPLE_SIZE);
+  this->forwarding_table.clear();
+  for (int n = 0; n < sizevector; ++n)
+  {
+
+    this->forwarding_table.push_back (i.ReadNtohU32());
+   }
+
+  return (messageSize);
+}
+
+
+
+// ---------------- SDN Aodv Reverse Routing Message -------------------------------
+
+uint32_t
+MessageHeader::Aodv_R_Rm::GetSerializedSize (void) const
+{
+  return (SDN_AODVRM_HEADER_SIZE +this->forwarding_table.size()*4);
+}
+
+
+
+void
+MessageHeader::Aodv_R_Rm::Serialize (Buffer::Iterator start) const
+{
+  Buffer::Iterator i = start;
+
+  i.WriteHtonU32 (this->routingMessageSize);
+  i.WriteHtonU32 (this->ID.Get());
+  i.WriteHtonU32 (this->DesId.Get());
+  i.WriteHtonU32 (this->mask);
+  i.WriteHtonU32 (this->jump_nums);
+  i.WriteHtonU32 (this->stability);
+
+for(auto iter=forwarding_table.begin();iter!=forwarding_table.end();iter++){
+      i.WriteHtonU32 (*iter);
+	}
+}
+
+uint32_t
+MessageHeader::Aodv_R_Rm::Deserialize (Buffer::Iterator start,
   uint32_t messageSize)
 {
   Buffer::Iterator i = start;
