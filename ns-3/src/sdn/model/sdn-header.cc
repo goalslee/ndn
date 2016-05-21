@@ -255,7 +255,7 @@ MessageHeader::Deserialize (Buffer::Iterator start)
       break;
     case AODV_REVERSE_MESSAGE:
         size +=
-          m_message.aodvrm.Deserialize (i, m_messageSize - SDN_MSG_HEADER_SIZE);
+          m_message.aodv_r_rm.Deserialize (i, m_messageSize - SDN_MSG_HEADER_SIZE);
         break;
     default:
       NS_ASSERT (false);
@@ -405,7 +405,8 @@ MessageHeader::AodvRm::Serialize (Buffer::Iterator start) const
   i.WriteHtonU32 (this->stability);
 
 for(auto iter=forwarding_table.begin();iter!=forwarding_table.end();iter++){
-      i.WriteHtonU32 (*iter);
+	  Ipv4Address temp=*iter;
+      i.WriteHtonU32 (temp.Get());
 	}
 }
 
@@ -434,8 +435,8 @@ MessageHeader::AodvRm::Deserialize (Buffer::Iterator start,
   this->forwarding_table.clear();
   for (int n = 0; n < sizevector; ++n)
   {
-
-    this->forwarding_table.push_back (i.ReadNtohU32());
+	  Ipv4Address temp(i.ReadNtohU32());
+    this->forwarding_table.push_back (temp);
    }
 
   return (messageSize);
@@ -466,7 +467,8 @@ MessageHeader::Aodv_R_Rm::Serialize (Buffer::Iterator start) const
   i.WriteHtonU32 (this->stability);
 
 for(auto iter=forwarding_table.begin();iter!=forwarding_table.end();iter++){
-      i.WriteHtonU32 (*iter);
+	  Ipv4Address temp=*iter;
+      i.WriteHtonU32 (temp.Get());
 	}
 }
 
@@ -496,7 +498,8 @@ MessageHeader::Aodv_R_Rm::Deserialize (Buffer::Iterator start,
   for (int n = 0; n < sizevector; ++n)
   {
 
-    this->forwarding_table.push_back (i.ReadNtohU32());
+	  Ipv4Address temp(i.ReadNtohU32());
+    this->forwarding_table.push_back (temp);
    }
 
   return (messageSize);

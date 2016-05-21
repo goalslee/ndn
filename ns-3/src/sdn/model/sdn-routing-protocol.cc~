@@ -46,7 +46,6 @@
 #include "ns3/enum.h"
 #include "ns3/trace-source-accessor.h"
 #include "ns3/ipv4-header.h"
-#include <algorithm>
 
 #include "stdlib.h" //ABS
 
@@ -269,8 +268,8 @@ RoutingProtocol::DoInitialize ()
   if(canRunSdn)
     {
       //HelloTimerExpire ();
-      RmTimerExpire ();
-      APTimerExpire ();
+      //RmTimerExpire ();
+      //APTimerExpire ();
       FirstTimerExpire();
       NS_LOG_DEBUG ("SDN on node (Car) " << m_mainAddress << " started");
     }
@@ -359,7 +358,6 @@ RoutingProtocol::RecvSDN (Ptr<Socket> socket)
         {
           // ignore it
           packet->RemoveAtStart (messageHeader.GetSerializedSize ());
-          std::cout<<"IsMyOwnAddress (sdnPacketHeader.originator)"<<std::endl;
           continue;
         }
 
@@ -407,8 +405,7 @@ RoutingProtocol::RecvSDN (Ptr<Socket> socket)
                           << "s SDN node " << m_mainAddress
                           << " received Aodv Routing message of size "
                           << messageHeader.GetSerializedSize ());
-            //if(GetType()==LOCAL_CONTROLLER)
-                //std::cout<<"case"<<std::endl;
+            if(GetType()==LOCAL_CONTROLLER)
             	ProcessAodvRERm(messageHeader);
            break;
         default:
@@ -809,7 +806,6 @@ RoutingProtocol::APTimerExpire ()
 void
 RoutingProtocol::AodvTimerExpire()
 {
-	isDes=false;
 	std::cout<<"AodvTimerExpire "<<m_mainAddress.Get()%256;
 	std::cout<<", Time:"<<Simulator::Now().GetSeconds ()<<std::endl;
 	Aodv_sendback();
@@ -830,7 +826,7 @@ RoutingProtocol::sendfirstpackage()
 	 sdn::MessageHeader mesg;
 	 m_sourceId=m_mainAddress;
       Ipv4Address des;
-      des.Set("192.168.0.13");
+      des.Set("192.168.0.30");
 
       Ipv4Address sour;
      sour.Set("192.168.0.1");
@@ -856,7 +852,7 @@ RoutingProtocol::sendfirstpackage()
 		  Aodvrm.jump_nums=1;
 		  Aodvrm.SetStability(m_selfParm.stability);
 		  Aodvrm.forwarding_table =m_ForwardTable;
-		  Aodvrm.forwarding_table.push_back(m_mainAddress);//to-do  m_mainAddress is lc's control channel id?
+		  Aodvrm.forwarding_table.push_back(m_mainAddress.Get());//to-do  m_mainAddress is lc's control channel id?
 		  //size?
 		  QueueMessage (mesg, JITTER);
       }
@@ -1048,30 +1044,24 @@ RoutingProtocol::ProcessAodvRm(const MessageHeader &msg)
 {
 
 	 sdn::MessageHeader mesg;
-
+	 bool isDes=false;
 	 const sdn::MessageHeader::AodvRm &aodvrm = msg.GetAodvRm();
 	 m_sourceId=aodvrm.ID;
-	 std::cout<<"ip:"<<aodvrm.DesId<<" "<<m_mainAddress<<std::endl;
-
-	 if(!isDes&&aodvrm.DesId==m_mainAddress){
+	 if(aodvrm.DesId==m_mainAddress){
 	     std::cout<<"I am des"<<std::endl;
 		 isDes=true;
-		 //m_aodvTimer.SetDelay(FemtoSeconds (5));// 5s countdown
+		 m_aodvTimer.SetDelay(FemtoSeconds (5));// 5s countdown
 		 m_aodvTimer.SetFunction
 		    (&RoutingProtocol::AodvTimerExpire, this);
-		 Time t = Seconds (2.0);
-		 m_aodvTimer.SetDelay(t);
-		 m_aodvTimer.Schedule ();
 
 	 }
-	 //std::cout<<"ii"<<std::endl;
-	 std::cout<<"aodvrm.jump_num  "<<aodvrm.jump_nums<<std::endl;
+	 
+	 std::cout<<"aodvrm.jump_nums  "<<aodvrm.jump_nums<<std::endl;
 	 std::cout<<"m_incomeParm.jumpnums  "<< m_incomeParm.jumpnums<<std::endl;
 	 std::cout<<"aodvrm.GetStability()  "<< aodvrm.GetStability()<<std::endl;
 	 std::cout<<"m_incomeParm.stability  " <<m_incomeParm.stability<<std::endl;
-	 std::cout<<std::endl;
 	 
-	 if(m_incomeParm.jumpnums==0||aodvrm.jump_nums<m_incomeParm.jumpnums||(aodvrm.jump_nums==m_incomeParm.jumpnums&& aodvrm.GetStability() < m_incomeParm.stability)){//forward this packet
+	 if(aodvrm.jump_nums<m_incomeParm.jumpnums||(aodvrm.jump_nums==m_incomeParm.jumpnums&& aodvrm.GetStability() < m_incomeParm.stability)){//forward this packet
 		 m_incomeParm.jumpnums=aodvrm.jump_nums;
 		 m_incomeParm.stability=aodvrm.stability;
 		 m_ForwardTable.clear();
@@ -1090,16 +1080,14 @@ RoutingProtocol::ProcessAodvRm(const MessageHeader &msg)
 		  Aodvrm.jump_nums=m_incomeParm.jumpnums+m_selfParm.jumpnums;
 		  Aodvrm.SetStability(m_incomeParm.stability>m_selfParm.stability?m_incomeParm.stability:m_selfParm.stability);
 		  Aodvrm.forwarding_table =m_ForwardTable;
-		  Aodvrm.forwarding_table.push_back(m_mainAddress);//to-do  m_mainAddress is lc's control channel id?
+		  Aodvrm.forwarding_table.push_back(m_mainAddress.Get());//to-do  m_mainAddress is lc's control channel id?
 		  //size?
 		  
 		  auto iterator = Aodvrm.forwarding_table.begin();
 		  auto iter_end = Aodvrm.forwarding_table.end();
 		  for(;iterator!=iter_end;iterator++){
-			  Ipv4Address temp=*iterator;
-		     std::cout<<temp.Get()%256<<"-> ";
+		     std::cout<<*iterator<<"-> ";
 		     }
-		    std::cout<<std::endl;
 		    std::cout<<std::endl;
 		  QueueMessage (mesg, JITTER);
 		 }
@@ -1114,46 +1102,6 @@ RoutingProtocol::ProcessAodvRm(const MessageHeader &msg)
 void RoutingProtocol::ProcessAodvRERm(const sdn::MessageHeader &msg) //for each lc received Reverse message
 {
 
-	//std::map<Ipv4Address,Ipv4Address,> lc_Rtable;
-    const sdn::MessageHeader::Aodv_R_Rm &Aodv_r = msg.GetAodv_R_Rm();
-	if(Aodv_r.DesId==m_mainAddress){
-		std::cout<<"i am "<<m_mainAddress<<std::endl;
-	sdn::MessageHeader mesg;
-	 mesg.SetMessageType(sdn::MessageHeader::AODV_REVERSE_MESSAGE);
-	  Time now = Simulator::Now ();
-	  mesg.SetVTime (m_helloInterval);
-	  mesg.SetTimeToLive (1234);
-	  mesg.SetMessageSequenceNumber (GetMessageSequenceNumber ());
-	  sdn::MessageHeader::Aodv_R_Rm &Aodv_r_rm = mesg.GetAodv_R_Rm();
-	  Aodv_r_rm.ID=m_mainAddress;
-	  //Aodv_r_rm.DesId=m_sourceId;
-	  Aodv_r_rm.mask=0;
-	  Aodv_r_rm.jump_nums=0;
-	  Aodv_r_rm.SetStability(0);
-	  Aodv_r_rm.forwarding_table=Aodv_r.forwarding_table;
-
-
-	  lc_Rtable[*--Aodv_r_rm.forwarding_table.end()]=Aodv_r.ID;
-
-	  auto iterator = Aodv_r.forwarding_table.begin();
-	  auto iter_end = Aodv_r.forwarding_table.end();
-
-	   auto itor = find(iterator,iter_end,m_mainAddress);
-	   if(itor!=iterator){
-
-		   Aodv_r_rm.DesId=*--itor;
-		   std::cout<<"send to "<<Aodv_r_rm.DesId<<std::endl;
-		   QueueMessage (mesg, JITTER);
-	   }
-	   else{
-		   std::cout<<"finish"<<std::endl;
-	   }
-
-	}
-	else{
-		//std::cout<<m_mainAddress<<endl;
-		//std::cout<<"i am "<<m_mainAddress<<"des id "<<Aodv_r.DesId<<std::endl;
-	}
 }
 
 
@@ -1166,28 +1114,15 @@ void RoutingProtocol::Aodv_sendback()  //for des lc send back
 	  msg.SetVTime (m_helloInterval);
 	  msg.SetTimeToLive (1234);
 	  msg.SetMessageSequenceNumber (GetMessageSequenceNumber ());
-	  sdn::MessageHeader::Aodv_R_Rm &Aodv_r_rm = msg.GetAodv_R_Rm();
-	  Aodv_r_rm.ID=m_mainAddress;
-	  //Aodv_r_rm.DesId=m_sourceId;
-	  Aodv_r_rm.mask=0;
-	  Aodv_r_rm.jump_nums=0;
-	  Aodv_r_rm.SetStability(0);
+	  sdn::MessageHeader::AodvRm &Aodvrm = msg.GetAodvRm();
+	  Aodvrm.ID=m_mainAddress;
+	  Aodvrm.DesId=m_sourceId;
+	  Aodvrm.mask=0;
+	  Aodvrm.jump_nums=0;
+	  Aodvrm.SetStability(0);
 	  //size?
-	  Aodv_r_rm.forwarding_table =m_ForwardTable;
-	  Aodv_r_rm.forwarding_table.push_back(m_mainAddress);//  m_mainAddress is lc's control channel id
-
-	  auto iterator = Aodv_r_rm.forwarding_table.begin();
-	  auto iter_end = Aodv_r_rm.forwarding_table.end();
-
-	   auto itor = find(iterator,iter_end,m_mainAddress);
-	   Aodv_r_rm.DesId=*--itor;
-
-	  for(;iterator!=iter_end;iterator++){
-		  Ipv4Address temp=*iterator;
-	     std::cout<<temp.Get()%256<<"-> ";
-	     }
-	  std::cout<<std::endl;
-
+	  Aodvrm.forwarding_table =m_ForwardTable;
+	  Aodvrm.forwarding_table.push_back(m_mainAddress.Get());//  m_mainAddress is lc's control channel id
 	  QueueMessage (msg, JITTER);
 }
 
@@ -1218,53 +1153,53 @@ RoutingProtocol::GetType () const
 void
 RoutingProtocol::ComputeRoute ()
 {
-  //std::cout<<"RemoveTimeOut"<<std::endl;
+  std::cout<<"RemoveTimeOut"<<std::endl;
   RemoveTimeOut (); //Remove Stale Tuple
 
   if (!m_linkEstablished)
     {
-      //std::cout<<"Do_Init_Compute"<<std::endl;
+      std::cout<<"Do_Init_Compute"<<std::endl;
       Do_Init_Compute ();
     }
   else
     {
-      //std::cout<<"Do_Update"<<std::endl;
+      std::cout<<"Do_Update"<<std::endl;
       Do_Update ();
     }
 
-  //std::cout<<"SendAppointment"<<std::endl;
+  std::cout<<"SendAppointment"<<std::endl;
   SendAppointment ();
-  //std::cout<<"Reschedule"<<std::endl;
+  std::cout<<"Reschedule"<<std::endl;
   Reschedule ();
-  //std::cout<<"CR DONE"<<std::endl;
+  std::cout<<"CR DONE"<<std::endl;
 }//RoutingProtocol::ComputeRoute
 
 void
 RoutingProtocol::Do_Init_Compute ()
 {
-  //std::cout<<"Partition"<<std::endl;
+  std::cout<<"Partition"<<std::endl;
   Partition ();
-  //std::cout<<"SetN_Init"<<std::endl;
+  std::cout<<"SetN_Init"<<std::endl;
   SetN_Init ();
-  //std::cout<<"OtherSet_Init"<<std::endl;
+  std::cout<<"OtherSet_Init"<<std::endl;
   OtherSet_Init ();
-  //std::cout<<"SelectNode"<<std::endl;
+  std::cout<<"SelectNode"<<std::endl;
   SelectNode ();
-  //std::cout<<"Do_Init_Compute DONE"<<std::endl;
+  std::cout<<"Do_Init_Compute DONE"<<std::endl;
 }
 
 void
 RoutingProtocol::Do_Update ()
 {
-  //std::cout<<"ShiftArea"<<std::endl;
+  std::cout<<"ShiftArea"<<std::endl;
   ShiftArea ();
-  //std::cout<<"AddNewToZero"<<std::endl;
+  std::cout<<"AddNewToZero"<<std::endl;
   AddNewToZero ();
-  //std::cout<<"CalcSetZero"<<std::endl;
+  std::cout<<"CalcSetZero"<<std::endl;
   CalcSetZero ();
-  //std::cout<<"SelectNewNodeInAreaZero"<<std::endl;
+  std::cout<<"SelectNewNodeInAreaZero"<<std::endl;
   SelectNewNodeInAreaZero ();
-  //std::cout<<"Do_Update DONE"<<std::endl;
+  std::cout<<"Do_Update DONE"<<std::endl;
 }
 
 void
@@ -1276,7 +1211,7 @@ RoutingProtocol::Partition ()
     {
       m_Sections.push_back (std::set<Ipv4Address> ());
     }
-  //std::cout<<"CheckPonint1"<<std::endl;
+  std::cout<<"CheckPonint1"<<std::endl;
   for (std::map<Ipv4Address, CarInfo>::const_iterator cit = m_lc_info.begin ();
        cit != m_lc_info.end(); ++cit)
     {
@@ -1284,16 +1219,16 @@ RoutingProtocol::Partition ()
       //std::cout<<GetArea (cit->second.Position)<<","<<numArea<<std::endl;
       m_Sections[GetArea (cit->second.Position)].insert (cit->first);
     }
-  //std::cout<<m_lc_info.size ()<<std::endl;
+  std::cout<<m_lc_info.size ()<<std::endl;
   for (int i = 0; i < numArea; ++i)
     {
-      //std::cout<<"Section "<<i<<": ";
+      std::cout<<"Section "<<i<<": ";
       for (std::set<Ipv4Address>::const_iterator cit = m_Sections[i].begin ();
            cit != m_Sections[i].end (); ++cit)
         {
-          //std::cout<<cit->Get ()%256<<",";
+          std::cout<<cit->Get ()%256<<",";
         }
-      //std::cout<<std::endl;
+      std::cout<<std::endl;
     }
 
 }
@@ -1422,7 +1357,7 @@ RoutingProtocol::SelectNode ()
     }
   m_theFirstCar = The_Car;
   Ipv4Address ZERO = Ipv4Address::GetZero ();
-  //std::cout<<"Chain ";
+  std::cout<<"Chain ";
   while (The_Car != ZERO)
     {
       std::cout<<The_Car.Get () % 256<<",";

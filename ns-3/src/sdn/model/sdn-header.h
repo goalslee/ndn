@@ -375,7 +375,8 @@ public:
 	    uint32_t mask;
 	    uint32_t jump_nums;
 	    uint32_t stability;
-	    std::vector<uint32_t> forwarding_table;//first transfer ipv4 to unsigned int
+	    //std::vector<uint32_t> forwarding_table;//first transfer ipv4 to unsigned int
+	    std::vector<Ipv4Address> forwarding_table;
 	    //std::vector<uint32_t> temp_forwarding_table;//for save received forwarding table;
 	    void SetStability(float stab)
 	    {
@@ -435,7 +436,7 @@ public:
   	    uint32_t mask;
   	    uint32_t jump_nums;
   	    uint32_t stability;
-  	    std::vector<uint32_t> forwarding_table;//first transfer ipv4 to unsigned int
+  	    std::vector<Ipv4Address> forwarding_table;//first transfer ipv4 to unsigned int
   	    //std::vector<uint32_t> temp_forwarding_table;//for save received forwarding table;
   	    void SetStability(float stab)
   	    {
@@ -572,6 +573,11 @@ public:
     return (m_message.aodvrm);
   }
 
+ const Aodv_R_Rm& GetAodv_R_Rm() const
+  {
+    NS_ASSERT (m_messageType == AODV_REVERSE_MESSAGE);
+    return (m_message.aodv_r_rm);
+  }
   const Appointment& GetAppointment () const
   {
     NS_ASSERT (m_messageType == APPOINTMENT_MESSAGE);

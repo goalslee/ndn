@@ -179,11 +179,16 @@ private:
 
   std::map<Ipv4Address, CarInfo> m_lc_info;///for LC
 
+  std::vector<RoutingTableEntry> lc_table;
+
+  //std::vector<RoutingTableEntry> lc_Rtable;//for aodv
+  std::map<Ipv4Address,Ipv4Address> lc_Rtable;
+
   //std::map<Ipv4Address,AodvParm> m_AodvParm;//keep other lc's parm
   Ipv4Address m_sourceId;
   AodvParm m_selfParm{1,1};//lc'self parameter
-  AodvParm m_incomeParm{1,1000};// received parameter
-  std::vector<uint32_t> m_ForwardTable;
+  AodvParm m_incomeParm{0,1000};// received parameter
+  std::vector<Ipv4Address> m_ForwardTable;
 
   EventGarbageCollector m_events;
 	
@@ -295,6 +300,7 @@ private:
   Ipv4Address m_mainAddress;
   uint32_t m_SCHinterface;
   uint32_t m_CCHinterface;
+  bool isDes=false;
   // One socket per interface, each bound to that interface's address
   // (reason: for VANET-SDN we need to distinguish CCH and SCH interfaces)
   std::map< Ptr<Socket>, Ipv4InterfaceAddress > m_socketAddresses;
