@@ -30,15 +30,15 @@ VanetSim::VanetSim()
 	freq2 = 5.890e9;  //802.11p CCH CH178
 	txp1 = 20;  // dBm SCH
 	txp2 = 20;  // CCH
-	range1 = 400.0;//SCH
+	range1 = 1000.0;//SCH
 	range2 = 1000.0;//CCH
 	packetSize = 1000; // bytes
 	numPackets = 1;
 	interval = 0.1; // seconds
 	verbose = false;
-	mod = 0;
+	mod = 1;
 	pmod = 0;
-	duration = -1;
+	duration = 100;
 	nodeNum = 0;
 	Rx_Data_Bytes = 0;
 	Rx_Data_Pkts = 0;
@@ -49,7 +49,8 @@ VanetSim::VanetSim()
 	Tx_Routing_Bytes = 0;
 	TX_Routing_Pkts = 0;
 	m_port = 65419;
-	homepath = getenv("HOME");
+	//homepath = getenv("HOME");
+	homepath = "/home/chl";
 	folder="SDN";
 }
 
@@ -129,9 +130,10 @@ void VanetSim::LoadTraffic()
 	os.open(output.data(),std::ios::out);
 
 	ns3::vanetmobility::VANETmobilityHelper mobilityHelper;
-	VMo=mobilityHelper.GetSumoMObility(sumo_net,sumo_route,sumo_fcd);
+	//VMo=mobilityHelper.GetSumoMObility(sumo_net,sumo_route,sumo_fcd);
 
-	nodeNum = VMo->GetNodeSize();
+	//nodeNum = VMo->GetNodeSize();
+	nodeNum = 10;
 }
 
 
@@ -233,20 +235,32 @@ void VanetSim::ConfigMobility()
 	Temp->SetPosition(Vector(5.1, 0.0, 0.0));
 	Temp = m_nodes.Get(nodeNum+2);//Sink
 */
-	VMo->Install();
-	double rt = VMo->GetReadTotalTime();
-	if (duration<0)
-	{
-		duration = rt;
-	}
+	//VMo->Install();
+	//double rt = VMo->GetReadTotalTime();
+	//if (duration<0)
+	//{
+	//	duration = rt;
+	//}
+	MobilityHelper mobility;
+	mobility.Install(m_nodes);
 	Time temp_now = Simulator::Now();
-	std::cout<<"Now?"<<temp_now.GetSeconds ()<<std::endl;
-	Ptr<MobilityModel> Temp = m_nodes.Get(nodeNum)->GetObject<MobilityModel>();//Controller
+	//std::cout<<"Now?"<<temp_now.GetSeconds ()<<std::endl;
+	/*
+	 * Ptr<MobilityModel> Temp = m_nodes.Get(nodeNum)->GetObject<MobilityModel>();//Controller
 	Temp->SetPosition(Vector(0.0, 0.0, 0.0));
 	Temp = m_nodes.Get(nodeNum+1)->GetObject<MobilityModel>();//source
 	Temp->SetPosition(Vector(5.1, 0.0, 0.0));
 	Temp = m_nodes.Get(nodeNum+2)->GetObject<MobilityModel>();//Sink
 	Temp->SetPosition(Vector(1000.0, 0.0, 0.0));
+	*/
+
+	for(uint32_t i=0;i<m_nodes.size();++i){
+		static int len=0;
+		Ptr<MobilityModel> Temp = m_nodes.Get(i)->GetObject<MobilityModel>();//Controller
+		Temp->SetPosition(Vector(len, 0.0, 0.0));
+		len+=400;
+	}
+
 }
 
 void VanetSim::ConfigApp()
@@ -266,7 +280,7 @@ void VanetSim::ConfigApp()
 	  SdnHelper sdn;
 	  for (uint32_t i = 0; i<nodeNum; ++i)
 	    {
-	      sdn.SetNodeTypeMap (m_nodes.Get (i), sdn::CAR);
+	      sdn.SetNodeTypeMap (m_nodes.Get (i), sdn::LOCAL_CONTROLLER);
 	    }
 	  sdn.SetNodeTypeMap (m_nodes.Get (nodeNum), sdn::LOCAL_CONTROLLER);
 	  sdn.ExcludeInterface (m_nodes.Get (nodeNum), 0);
@@ -410,6 +424,7 @@ void VanetSim::Look_at_clock()
 // Example to use ns2 traces file in ns3
 int main (int argc, char *argv[])
 {
+	std::cout<<"begin"<<std::endl;
 	VanetSim SDN_test;
 	SDN_test.Simulate(argc, argv);
 	return 0;
