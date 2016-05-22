@@ -250,10 +250,10 @@ RoutingProtocol::DoInitialize ()
             }
         }
 
-      NS_ASSERT (m_mainAddress != Ipv4Address ());
+      NS_ASSERT (m_CCHmainAddress != Ipv4Address ());
     }
 
-  NS_LOG_DEBUG ("Starting SDN on node " << m_mainAddress);
+  NS_LOG_DEBUG ("Starting SDN on node " << m_CCHmainAddress);
 
   Ipv4Address loopback ("127.0.0.1");
 
