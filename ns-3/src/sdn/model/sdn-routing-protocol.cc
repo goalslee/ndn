@@ -49,7 +49,7 @@
 #include <algorithm>
 
 #include "stdlib.h" //ABS
-
+#include "string.h"//memset
 /********** Useful macros **********/
 
 ///
@@ -81,8 +81,13 @@
 /// Maximum number of messages per packet.
 #define SDN_MAX_MSGS    64
 
+#define ROAD_LENGTH 1000
+#define SIGNAL_RANGE 400.0
 
 #define INFHOP 2147483647
+
+#define max_car_number 256
+#define MAX 10000
 
 namespace ns3 {
 namespace sdn {
@@ -121,6 +126,7 @@ RoutingProtocol::RoutingProtocol ()
     m_CCHinterface (0),
     m_nodetype (OTHERS),
     m_appointmentResult (NORMAL),
+    m_next_forwarder (uint32_t (0)),
     m_linkEstablished (false),
     m_numArea (0),
     m_isPadding (false),
@@ -172,6 +178,7 @@ void RoutingProtocol::DoDispose ()
     }
   m_socketAddresses.clear ();
   m_table.clear();
+  m_SCHaddr2CCHaddr.clear ();
 
   Ipv4RoutingProtocol::DoDispose ();
 }
@@ -206,10 +213,11 @@ RoutingProtocol::PrintRoutingTable (Ptr<OutputStreamWrapper> stream) const
 void 
 RoutingProtocol::DoInitialize ()
 {
-  if (m_mainAddress == Ipv4Address ())
+  if (m_CCHmainAddress == Ipv4Address ())
     {
       Ipv4Address loopback ("127.0.0.1");
       uint32_t count = 0;
+      uint32_t count1 = 0;
       for (uint32_t i = 0; i < m_ipv4->GetNInterfaces (); ++i)
         {
           // CAR Use first address as ID
@@ -219,15 +227,22 @@ RoutingProtocol::DoInitialize ()
             {
               if (m_nodetype == CAR)
                 {
-                  m_mainAddress = addr;
-                  break;
+                  if(count1 == 1)
+                      {
+                        m_CCHmainAddress = addr;
+                        break;
+                      }
+                  else if(count1 == 0)
+                        m_SCHmainAddress = addr;
+                  ++count1;
+                  //std::cout<<i<<"123456 "<<addr.Get()<<std::endl;
                 }
               else
                 if (m_nodetype == LOCAL_CONTROLLER)
                   {
                     if (count == 1)
                       {
-                        m_mainAddress = addr;
+                        m_CCHmainAddress = addr;
                         break;
                       }
                     ++count;
